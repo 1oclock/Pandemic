@@ -1,0 +1,6 @@
+﻿  WindowsProject1.cpp
+C:\Users\15325\source\repos\WindowsProject1\WindowsProject1\WindowsProject1.cpp(71,10): warning C4101: “player”: 未引用的局部变量
+C:\Users\15325\source\repos\WindowsProject1\WindowsProject1\WindowsProject1.cpp(111,6): warning C4101: “hdc”: 未引用的局部变量
+C:\Users\15325\source\repos\WindowsProject1\WindowsProject1\WindowsProject1.cpp(112,14): warning C4101: “ps”: 未引用的局部变量
+C:\Users\15325\source\repos\WindowsProject1\WindowsProject1\WindowsProject1.cpp(113,7): warning C4101: “rect”: 未引用的局部变量
+  WindowsProject1.vcxproj -> C:\Users\15325\source\repos\WindowsProject1\Debug\WindowsProject1.exe
