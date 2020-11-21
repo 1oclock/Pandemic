@@ -35,6 +35,12 @@
     <ClCompile Include="cityImp.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="drawImp.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="playerImp.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WindowsProject1.rc">

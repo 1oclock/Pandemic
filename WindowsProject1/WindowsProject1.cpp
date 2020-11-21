@@ -4,24 +4,31 @@
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HWND hwnd;
-int outbreakTrack;
-int infectRate;
+int outbreakTrack; void drawOutbreakTrack();
+int infectRate; void drawInfectRate();
+int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
+bool isMouseTouched; int mousex, mousey;
+
 typedef struct _Color {
 	wchar_t chineseName[3];
 	int num;
 	bool isCured;
 	bool isEradicated;
 	int virusRemain;
+	void drawCureStatus();
 }Color;
+Color colors[4];
 typedef struct _HandCard {
 	int nCityNum;
 	int cardType;
+	static void drawHandCardArea();
 }HandCard;
 HandCard handCards[100];
 HandCard usedHandCards[100];
 typedef struct _VirusCard {
 	int nCitynum;
+	static void drawVirusCardArea();
 }VirusCard;
 VirusCard virusCards[100];
 VirusCard usedVirusCards[100];
@@ -29,6 +36,7 @@ class City{
 private:
 	int num;
 	int neighbor[10];
+	int cx, cy;
 	wchar_t englishName[10];
 	wchar_t chineseName[10];
 	bool operator==(City c);
@@ -37,6 +45,7 @@ private:
 	Color colVirus[3];
 	bool hasResearch;
 	bool hasOutbreak;
+	void drawShapes(int type, int centerX, int centerY);
 public:
 	City();
 	Color color;
@@ -49,11 +58,13 @@ public:
 	friend bool checkRemove(int color);
 	void addVirus(Color col);
 };
+//City cities[48];
 void epidemic();
 class Player {
 private:
 	int cardToCure;
 	City nowCity;
+	int people;
 public:
 	HandCard handCards[7];
 	int remainMove;
@@ -87,8 +98,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	wndclass.lpszMenuName = NULL;
 	wndclass.style = CS_HREDRAW | CS_VREDRAW;
 	RegisterClass(&wndclass);
-	hwnd = CreateWindow(L"瘟疫危机", L"瘟疫危机", WS_OVERLAPPEDWINDOW, 50/*initial x*/
-		, 50/*initial y*/, 1300/*width*/, 800/*height*/,NULL, NULL, hInstance, NULL);
+	hwnd = CreateWindow(L"瘟疫危机", L"瘟疫危机", WS_OVERLAPPEDWINDOW, 0/*initial x*/
+		, 0/*initial y*/, 1500/*width*/, 800/*height*/,NULL, NULL, hInstance, NULL);
 	DWORD   dwStyle = GetWindowLong(hwnd, GWL_STYLE);
 	dwStyle &= ~(WS_SIZEBOX);
 	SetWindowLong(hwnd, GWL_STYLE, dwStyle);//*/
@@ -119,9 +130,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 	case WM_CREATE:
 		return 0;
 	case WM_PAINT:
-		drawBitmap(L"2.bmp", 1000, 500, 0, 0);
-		drawBitmap(L"1.bmp", 100, 200, 500, 100);
-		drawBitmap(L"11.bmp", 200, 146, 0, 0);
+		drawBitmap(L"Pictures/mainbackground.bmp", 1200, 700, 0, 0);
+
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -138,3 +148,5 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 }
 
 #include "cityImp.cpp"
+#include "drawImp.cpp"
+#include "playerImp.cpp"

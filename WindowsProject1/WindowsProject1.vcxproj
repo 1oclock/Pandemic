@@ -146,6 +146,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cityImp.cpp" />
+    <ClCompile Include="drawImp.cpp" />
+    <ClCompile Include="playerImp.cpp" />
     <ClCompile Include="WindowsProject1.cpp" />
   </ItemGroup>
   <ItemGroup>
