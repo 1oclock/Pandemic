@@ -1,0 +1,4 @@
+﻿colors[0].chineseName = L"蓝"; colors[0].englishName = L'b'; colors[0].num = 0; colors[0].cureStatus = 0; colors[0].virusRemain = 24;
+colors[1].chineseName = L"黄"; colors[1].englishName = L'y'; colors[1].num = 1; colors[1].cureStatus = 0; colors[1].virusRemain = 24;
+colors[2].chineseName = L"黑"; colors[2].englishName = L'l'; colors[2].num = 2; colors[2].cureStatus = 0; colors[2].virusRemain = 24;
+colors[3].chineseName = L"红"; colors[3].englishName = L'r'; colors[3].num = 3; colors[3].cureStatus = 0; colors[3].virusRemain = 24;
