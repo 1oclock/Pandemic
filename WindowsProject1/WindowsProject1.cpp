@@ -4,36 +4,37 @@
 #include <stdio.h>
 #include <algorithm>
 #include <string.h>
+#include <map>
+#include <string>
 
 #define set0(x) memset(x,0,sizeof(x))
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HWND hwnd;
-int outbreakTrack=0; void drawOutbreakTrack();
-int infectRate=0; void drawInfectRate();
+int outbreakTrack=0;
+int infectRate=0;
 int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
-bool isMouseTouched; int mousex, mousey;
+bool isMouseTouched; int latestX, latestY;
 bool flag;
 
 typedef struct _Color {
 	const wchar_t* chineseName;
 	wchar_t englishName;
 	int num;
-	int cureStatus;
-	int virusRemain;
+	int cureStatus;//0 uncured,1 cured,2 eraditated
+	int virusRemain;//24 in the beginning, -1 to lose, cure to recover
 }Color;
 Color colors[4];
 typedef struct _HandCard {
-	int nCityNum;
-	int cardType;
-	static void drawHandCardArea();
+	int nCityNum;//is special event num when cardtype==1
+	int cardType;//0 when normal; 1 when special event; 2 when pandemic,-1 when empty
+	_HandCard(int x = 0, int y = -1) :nCityNum(y), cardType(x) {}
 }HandCard;
 HandCard handCards[100];
 HandCard usedHandCards[100];
 typedef struct _VirusCard {
 	int nCitynum;
-	static void drawVirusCardArea();
 }VirusCard;
 VirusCard virusCards[100];
 VirusCard usedVirusCards[100];
@@ -42,42 +43,47 @@ private:
 	int num;
 	int neighbor[10];
 	bool operator==(City c);
-	int nVirus;
 	bool hasVirus[3];
 	int colVirus[3];
 	bool hasResearch;
 	bool hasOutbreak;
-	void drawShapes(int type, int centerX, int centerY);
-public:
 	const wchar_t* englishName;
 	const wchar_t* chineseName;
 	int cx, cy;
+	mutable int nowin;
+	int getNextCity(int nowCity)const;//iterate all the city neighboring,return its num,start from self
+public:
 	City();
 	int color;
 	bool isPeopleHere[4];
-	City getNextCity(int nowCity);
-	City& cityByName(const wchar_t* name);
-	void outbreak(int color);
+	void outbreak(int col);//>3 outbreak
 	void redraw();
-	bool isNeighbor(City& c);
-	friend bool checkRemove(int color);
-	void addVirus(Color col);
+	bool isNeighbor(const City& c)const;
+	friend bool checkRemove(int col);//check if virus of color color doesn't exist in the city
+	void addVirus(int col);
+	bool isClickNear(int clickX, int clickY);
+	static void init();
+	static void clearOutbreakStatus();
+	void showInformation();
+	bool confirmSelection(const wchar_t* thingToDo);
 };
 City cities[49];
 void epidemic();
 class Player {
-private:
+protected:
 	int cardToCure;
+private:
 	City nowCity;
-	int people;
+	char playerType;
 public:
+	Player();
 	HandCard handCards[7];
 	int remainMove;
-	void drive(City c);
-	void directFlight(HandCard& h);
-	void charterFlight(HandCard& h);
+	void drive(City c);//correctnesses of all the functions here is protected by outside. These are all noexcept.
+	void directFlight(HandCard& h);//go to h directed
+	void charterFlight(HandCard& h,City to);
 	void shuttleFlight(City cWithResearch);
-	void buildResearch(HandCard& h);
+	virtual void buildResearch(HandCard& h);
 	void removeResearch();
 	void discoverCure(HandCard* hs);
 	virtual void treatDisease();
@@ -86,12 +92,42 @@ public:
 	void drawCards();
 	void infectVirus();
 };
+Player* players[4];
+class SkilllessPlayer :public Player {
+	virtual void skill() {}//this is a testing skillless player
+};
+class Actor :public Player {
+	virtual void skill() {/*actually overload buildResearch();here to concrete it,below same*/}
+	virtual void buildResearch(HandCard& h);
+};
+class Dispatcher :public Player {
+	virtual void skill() {
+		//here really need to write something, but I have no idea now
+	}
+};
+class Medic :public Player {
+	virtual void skill(){}
+	virtual void treatDisease();
+};
+class Researcher :public Player {
+	virtual void skill(){}
+	virtual void deliverCard(HandCard& h, Player& p, bool isGive);
+};
+class Scientist :public Player {
+	virtual void skill(){}
+	Scientist();//only need to override constructor to change cardToCure to 4
+};
+
 void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
 {
 #include "colorinit.txt"
-#include "cityinit.txt"
+	City::init();
+	players[0] = new SkilllessPlayer();
+	players[0]->handCards[0] = _HandCard(0, 3); players[0]->handCards[1] = _HandCard(1, 3); players[0]->handCards[2] = _HandCard(0, 30);
+	players[0]->handCards[3] = _HandCard(0, 25); players[0]->handCards[4] = _HandCard(1, 0); players[0]->handCards[5] = _HandCard(0, 13);
+	players[0]->handCards[6] = _HandCard(0, 40);
 	flag = 0;
 	WNDCLASS wndclass;
 	MSG msg;
@@ -116,7 +152,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
-		UpdateWindow(hwnd);
+		if (isMouseTouched && latestX > 1200 && latestY > 700)
+			isMouseTouched = 0,players[0]->handCards[0].nCityNum=latestY%40, InvalidateRect(hwnd,NULL, false);
+		if (isMouseTouched) {
+			isMouseTouched = false;
+			for (int i = 1; i <= 48; i++) {
+				if (cities[i].isClickNear(latestX, latestY)) {
+					if (cities[i].confirmSelection(L"坐车"))
+						MessageBox(hwnd, L"1", L"1", 0);
+					else
+						MessageBox(hwnd, L"0", L"0", 0);
+					break;
+				}
+			}
+		}
 	}
 	return msg.wParam;
 }
@@ -152,6 +201,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 		else
 			drawBitmap(L"Pictures/O2.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
 		drawBitmap(L"Pictures/infRate.bmp", 42, 37, infectRateX[infectRate], infectRateY[infectRate]);
+		players[0]->drawCards();
 		for (int i = 0; i < 4; i++) {
 			wchar_t nm[30]; swprintf_s(nm, L"Pictures/cureEff/%c%d.bmp", colors[i].englishName, colors[i].cureStatus);
 			//MessageBox(hwnd, nm, L"abc", 0);
@@ -166,6 +216,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 	case WM_LBUTTONDOWN:
 		int mouse_x = (int)LOWORD(lParam);
 		int mouse_y = (int)HIWORD(lParam);
+		isMouseTouched = 1; latestX = mouse_x; latestY = mouse_y;
 		wchar_t a[200]; 
 		if (mouse_y > 700)outbreakTrack++;
 		if (mouse_x > 1200)infectRate++;
@@ -179,12 +230,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 City::City() {
 	int t = this - cities, u = 0, i = 0;
 	num = t;
-	nVirus = 0;
 	set0(hasVirus); set0(isPeopleHere);
 	hasOutbreak = hasResearch = false;
 	hasVirus[0] = hasVirus[1] = hasVirus[2] =false; 
 	isPeopleHere[0] = isPeopleHere[1] = isPeopleHere[2] = isPeopleHere[3] = false;
 	hasResearch = false;
+}
+void City::init() {
+#include "cityinit.txt"
 }
 #define setPenAndBrush(i,r,g,b) pen[i] = CreatePen(PS_SOLID, 1, RGB(r,g,b)); brush[i] = CreateSolidBrush(RGB(r,g,b));
 void City::redraw() {
@@ -192,9 +245,9 @@ void City::redraw() {
 	PAINTSTRUCT ps;
 	HDC hdc = GetDC(hwnd);
 	HPEN pen[4]; HBRUSH brush[4];
-	colVirus[0] = colVirus[1] = colVirus[2] = color;
-	swprintf_s(str, L"%d %d %d", colVirus[0], colVirus[1], colVirus[2]);
-	//TextOut(hdc, cx, cy, str, 10);
+	//colVirus[0] = colVirus[1] = colVirus[2] = color;
+	swprintf_s(str, L"%d", this->num);
+	//TextOut(hdc, cx, cy, str, wcslen(str));
 	setPenAndBrush(0, 0, 0, 250); pen[1] = CreatePen(PS_SOLID, 1, RGB(128,128,128)); brush[1] = CreateSolidBrush(RGB(255,255,0));
 	setPenAndBrush(2, 0, 0, 0); setPenAndBrush(3, 250, 0, 0);
 	if (this->hasVirus[0]) {
@@ -241,10 +294,96 @@ void City::redraw() {
 	DeleteObject(pen[2]); DeleteObject(brush[2]); DeleteObject(pen[3]); DeleteObject(brush[3]);
 	ReleaseDC(hwnd, hdc);
 }//*/
+Player::Player() {
+	cardToCure = 5; this->nowCity = cities[2]; playerType = 'n';
+}
+const wchar_t* event[] = { L"airmove",L"boom",L"foresee",L"fund",L"silent" };
+void Player::drawCards() {
+	wchar_t nm[100];
+	for (int i = 0; i < 7; i++) {
+		if (handCards[i].cardType == 0) {
+			wsprintf(nm, L"Pictures/cities/city%d/h.bmp", handCards[i].nCityNum); //MessageBox(hwnd, nm, L"anc", 0);
+			drawBitmap(nm, 120, 150, 1200 + (i % 2) * 120, (i / 2) * 150);
+		}
+		else if (handCards[i].cardType == 1) {
+			wsprintf(nm, L"Pictures/Event/%s.bmp", event[handCards[i].nCityNum]);// MessageBox(hwnd, nm, L"anc", 0);
+			drawBitmap(nm, 120, 150, 1200 + (i % 2) * 120, (i / 2) * 150);
+		}
+		else return;
+	}
+	return;
+}
+bool City::operator== (City c) {
+	return num = c.num;
+}
+int City::getNextCity(int nowCity)const{
+	if (nowCity == num) {
+		nowin = 0;
+		return neighbor[0];
+	}
+	if (nowCity == 0) {
+		nowin = 0; return 0;
+	}
+	++nowin;
+	return neighbor[nowin];
+}
+bool City::isNeighbor(const City& c)const {
+	int t = c.num;
+	while (t = c.getNextCity(t)) {
+		if (cities[t] == *this)return true;
+	}
+	return false;
+}
+bool checkRemove(int col) {
+	for (int i = 1; i <= 48; i++)
+		for (int j = 0; j < 3; j++)
+			if (cities[i].hasVirus[j] && cities[i].colVirus[j] == col)
+				return false;
+	return true;
+}
+void City::addVirus(int col) {
+	if (colors[col].cureStatus == 2)return;
+	for (int i = 0; i < 3; i++) {
+		if (!hasVirus[i]) {
+			hasVirus[i] = true;
+			colVirus[i] = col;
+			return;
+		}
+	}
+	hasOutbreak = true;
+	outbreak(col);
+	outbreakTrack++; 
+	if (outbreakTrack > 8)
+		outbreakTrack = 8;
+}
+void City::outbreak(int col) {
+	int t = this->num;
+	while (t = getNextCity(t)) {
+		cities[t].addVirus(t);
+	}
+}
+void City::clearOutbreakStatus() {
+	for (int i = 1; i <= 48; i++)
+		cities[i].hasOutbreak = false;
+}
+bool City::isClickNear(int clickX, int clickY) {
+	//wchar_t info[20]; wsprintf(info, "%d %d %d %d", clickX, clickY, cx, cy);MessageBox(hwnd, info, "abc", 0);
+	return clickX <= cx + 20 && clickY <= cy + 20 && clickX >= cx - 20 && clickY >= cy - 20;
+}
+void City::showInformation() {
+	wchar_t info[200], title[20]; int nvirus = 0+hasVirus[0] + hasVirus[1] + hasVirus[2],
+		nplayer=0+isPeopleHere[0]+isPeopleHere[1]+isPeopleHere[2]+isPeopleHere[3];
+	wsprintf(info, L"%s是个%s色城市，%s研究所\n有%d个病毒，%d人在此", chineseName, colors[color].chineseName, hasResearch ? L"有" : L"无",nvirus, nplayer);
+	wsprintf(title, L"%s信息", chineseName);
+	MessageBox(hwnd, info, title, 0);
+}
+bool City::confirmSelection(const wchar_t* thingToDo) {
+	wchar_t info[200], title[20];
+	wsprintf(info, L"你确定要对%s执行%s操作吗？", chineseName, thingToDo);
+	wsprintf(title, L"%s操作确认", thingToDo);
+	return MessageBox(hwnd, info, title, MB_YESNO | MB_ICONQUESTION) == IDYES;
+}
+void Player::buildResearch(HandCard& h){}
+void Player::treatDisease(){}
+void Player::deliverCard(HandCard& h, Player& p, bool isGive){}
 #endif
-#ifndef CITYIMP_INCLUDED
-//# include "cityImp.h"
-#define CITYIMP_INCLUDED
-#endif
-#include "drawImp.cpp"
-#include "playerImp.cpp"
