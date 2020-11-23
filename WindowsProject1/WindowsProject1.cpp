@@ -56,7 +56,7 @@ public:
 	City();
 	int color;
 	bool isPeopleHere[4];
-	void outbreak(int col);//>3 outbreak
+	int outbreak(int col);//>3 outbreak
 	void redraw();
 	bool isNeighbor(const City& c)const;
 	friend bool checkRemove(int col);//check if virus of color color doesn't exist in the city
@@ -351,16 +351,17 @@ void City::addVirus(int col) {
 		}
 	}
 	hasOutbreak = true;
-	outbreak(col);
-	outbreakTrack++; 
+	outbreakTrack += outbreak(col);
 	if (outbreakTrack > 8)
 		outbreakTrack = 8;
 }
-void City::outbreak(int col) {
+int City::outbreak(int col) {
+	if (hasOutbreak)return 0;
 	int t = this->num;
 	while (t = getNextCity(t)) {
 		cities[t].addVirus(t);
 	}
+	return 1;
 }
 void City::clearOutbreakStatus() {
 	for (int i = 1; i <= 48; i++)
