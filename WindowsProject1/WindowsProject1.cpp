@@ -10,13 +10,20 @@
 
 #define set0(x) memset(x,0,sizeof(x))
 #define isin(xl,xr,yu,yd) (latestX>=(xl)&&latestX<=(xr)&&latestY>=(yu)&&latestY<=(yd))
-#define waitUntilMouseInput\
+#define WAIT_UNTIL_MOUSE_INPUT \
+isMouseTouched=false;\
 while (GetMessage(&msg, NULL, 0, 0)){\
 	TranslateMessage(&msg);\
 	DispatchMessage(&msg);\
 	if(isMouseTouched)break;\
 }
-
+#define WAIT_UNTIL_REDRAW \
+isRedrawed=false;\
+while (GetMessage(&msg, NULL, 0, 0)){\
+	TranslateMessage(&msg);\
+	DispatchMessage(&msg);\
+	if(isRedrawed)break;\
+}
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 HWND hwnd;
@@ -25,7 +32,7 @@ int infectRate=0;
 int numOfResearch = 0;
 int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
-bool isMouseTouched; int latestX, latestY;
+bool isMouseTouched, isRedrawed; int latestX, latestY;
 bool flag;
 
 typedef struct _Color {
@@ -89,9 +96,8 @@ protected:
 	int cardToCure;
 	void discardCard(HandCard& h);
 	void addCard(HandCard h);
-private:
-	char playerType;
 public:
+	char playerType;
 	int num;
 	int nowCity;
 	Player();
@@ -130,7 +136,6 @@ class Medic :public Player {
 };
 class Researcher :public Player {
 	virtual void skill(){}
-	virtual void deliverCard(HandCard& h, Player& p, bool isGive);
 };
 class Scientist :public Player {
 	virtual void skill(){}
@@ -145,6 +150,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 #include "colorinit.txt"
 	City::init();
 	players[0] = new SkilllessPlayer(); players[0]->num = 0;
+	players[1] = new SkilllessPlayer(); players[1]->num = 1;
+	players[2] = new SkilllessPlayer(); players[1]->num = 2;
+	players[3] = new SkilllessPlayer(); players[1]->num = 3;
 	for (int i = 1; i <= 48; i++)
 		toUseVirusCards.emplace_back(i),
 		toUseHandCards.emplace_back(0, i);
@@ -178,22 +186,38 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		int t = rand() % (sz / difficulty) + (sz / difficulty + 1) * (i);
 		toUseHandCards.insert(toUseHandCards.begin()+t, _HandCard(2, 0));
 	}
-	while (GetMessage(&msg, NULL, 0, 0)){
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-		if (isMouseTouched && latestX > 1200 && latestY > 700)
-			isMouseTouched = 0,players[0]->handCards[0].nCityNum=latestY%40, InvalidateRect(hwnd,NULL, false);
-		if (isMouseTouched) {
-			isMouseTouched = false;
-			if (cities[1].isClickNear(latestX, latestY)) {
-				usedHandCards.push_back(*toUseHandCards.rbegin());
-				toUseHandCards.pop_back();
+	int nowPlayer = 0;
+	while (1) {
+		while (players[nowPlayer]->remainMove) {
+			WAIT_UNTIL_MOUSE_INPUT;
+			if (isin(16, 60, 717, 749)) {
+				//drive
 			}
-			if (cities[2].isClickNear(latestX, latestY)) {
-				usedVirusCards.push_back(*toUseVirusCards.rbegin());
-				toUseVirusCards.pop_back();
+			if (isin(70, 116, 717, 749)) {
+				//directflight
 			}
-			if (isin(879,1007,535,867)) {
+			if (isin(128, 175, 717, 749)) {
+				//charterflight
+			}
+			if (isin(181, 315, 717, 749)) {
+				//shuttleflight
+			}
+			if (isin(324, 414, 717, 749)) {
+				//curedisease
+			}
+			if (isin(422, 531, 717, 749)) {
+				//buildresearch
+			}
+			if (isin(546, 627, 717, 749)) {
+				//findcure
+			}
+			if (isin(642, 727, 717, 749)) {
+				//change card
+			}
+			if (isin(734, 824, 717, 749)) {
+				break;
+			}
+			if (isin(879, 1007, 535, 867)) {
 				showUsedHC();
 			}
 			if (isin(870, 1070, 22, 132)) {
@@ -202,13 +226,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 			for (int i = 1; i <= 48; i++) {
 				break;
 				if (cities[i].isClickNear(latestX, latestY)) {
-					if (cities[i].confirmSelection(L"坐车"))
+					if (cities[i].confirmSelection(L"乘车"))
 						MessageBox(hwnd, L"1", L"1", 0);
 					else
 						MessageBox(hwnd, L"0", L"0", 0);
 					break;
 				}
 			}
+			WAIT_UNTIL_REDRAW;
 		}
 	}
 	return msg.wParam;
@@ -235,6 +260,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 		wchar_t c[40];
 		drawBitmap(L"Pictures/main_background.bmp", 1200, 700, 0, 0);
 		drawBitmap(L"Pictures/hback.bmp", 128, 152, 715, 535);
+		drawBitmap(L"Pictures/movements.bmp", 1117, 55, 0, 701);
 		system("Pictures/cities/city4/info.txt");
 		if (usedHandCards.size()) {
 			wsprintf(c, L"Pictures/cities/city%d/h.bmp",(*usedHandCards.rbegin()).nCityNum);
@@ -259,7 +285,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 			drawBitmap(nm, 40, 40, 355 + 85 * i, 642 - (colors[i].cureStatus != 0) * 42);
 		}
 		for (int i = 1; i <= 48; i++)
-			cities[i].redraw();
+			if(1||i%6==0)
+				cities[i].redraw();
+		isRedrawed = true;
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -393,12 +421,14 @@ bool checkRemove(int col) {
 	return true;
 }
 void City::addVirus(int col) {
-	if (col = -1)col = color;
+	if (col == -1)
+		col = color;
 	if (colors[col].cureStatus == 2)return;
 	for (int i = 0; i < 3; i++) {
 		if (!hasVirus[i]) {
 			hasVirus[i] = true;
 			colVirus[i] = col;
+			colors[col].virusRemain--;
 			return;
 		}
 	}
@@ -416,12 +446,20 @@ int City::outbreak(int col) {
 	return 1;
 }
 bool City::subVirus() {
+	bool res = false;
 	if (colors[color].cureStatus == 1) {
-		set0(hasVirus); set0(colVirus); return true;
+		for (int i = 0; i < 3; i++) {
+			res |= hasVirus[i];
+			hasVirus[i] = 0;
+			colors[colVirus[i]].virusRemain++;
+		}
+		return res;
 	}
 	for(int i=2;i>-1;i--)
 		if (hasVirus[i]) {
-			hasVirus[i] = 0; return true;
+			hasVirus[i] = 0;  
+			colors[colVirus[i]].virusRemain++;
+			return true;
 		}
 	return false;
 }
@@ -485,6 +523,11 @@ void Player::buildResearch(HandCard& h){
 	discardCard(h);
 	remainMove--;
 }
+void Actor::buildResearch(HandCard& h) {
+	cities[nowCity].hasResearch = true;
+	numOfResearch++;
+	remainMove--;
+}
 void Player::drive(int c) {
 	cities[nowCity].isPeopleHere[num] = false;
 	nowCity = c;
@@ -504,6 +547,11 @@ void Player::shuttleFlight(int cWithResearch) {
 }
 void Player::treatDisease(){
 	remainMove-=cities[nowCity].subVirus();
+}
+void Medic::treatDisease() {
+	bool t = cities[nowCity].subVirus() | cities[nowCity].subVirus() | cities[nowCity].subVirus();
+	if (colors[cities[nowCity].color].cureStatus == 0)
+		remainMove -= t;
 }
 void Player::addCard(HandCard h) {
 	if (~handCards[6].cardType) {
@@ -562,4 +610,19 @@ void Player::discoverCure(HandCard* h) {
 	colors[co].cureStatus = 1;
 	remainMove--;
 }
+void epidemic() {
+	infectRate++;
+	for (int i = 0; i < 3; i++)cities[toUseVirusCards[0].nCitynum].addVirus();
+	usedVirusCards.push_back(toUseVirusCards[0]);
+	int sz = toUseVirusCards.size();
+	for (int i = 1; i < sz; i++)
+		toUseVirusCards[i] = toUseVirusCards[i - 1];
+	toUseVirusCards.pop_back();
+	std::random_shuffle(usedVirusCards.begin(), usedVirusCards.end());
+	while (usedVirusCards.size()) {
+		toUseVirusCards.push_back(*usedVirusCards.rbegin());
+		usedVirusCards.pop_back();
+	}
+}
+
 #endif

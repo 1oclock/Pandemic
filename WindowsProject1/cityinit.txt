@@ -54,4 +54,423 @@
 	cities[46].chineseName=L"东京";cities[46].englishName=L"tk";cities[46].cx=1133;cities[46].cy=283,cities[46].color=3;
 	cities[47].chineseName=L"德黑兰";cities[47].englishName=L"tr";cities[47].cx=768;cities[47].cy=271,cities[47].color=2;
 	cities[48].chineseName=L"多伦多";cities[48].englishName=L"tt";cities[48].cx=248;cities[48].cy=264,cities[48].color=0;
-
+	
+	cities[1].neighbor[0]=12;
+	cities[1].neighbor[1]=19;
+	cities[1].neighbor[2]=29;
+	cities[1].neighbor[3]=36;
+	cities[1].neighbor[4]=0;
+	cities[1].neighbor[5]=0;
+	cities[2].neighbor[0]=10;
+	cities[2].neighbor[1]=13;
+	cities[2].neighbor[2]=31;
+	cities[2].neighbor[3]=0;
+	cities[2].neighbor[4]=0;
+	cities[2].neighbor[5]=0;
+	cities[3].neighbor[0]=6;
+	cities[3].neighbor[1]=44;
+	cities[3].neighbor[2]=0;
+	cities[3].neighbor[3]=0;
+	cities[3].neighbor[4]=0;
+	cities[3].neighbor[5]=0;
+	cities[4].neighbor[0]=11;
+	cities[4].neighbor[1]=14;
+	cities[4].neighbor[2]=21;
+	cities[4].neighbor[3]=0;
+	cities[4].neighbor[4]=0;
+	cities[4].neighbor[5]=0;
+	cities[5].neighbor[0]=12;
+	cities[5].neighbor[1]=19;
+	cities[5].neighbor[2]=21;
+	cities[5].neighbor[3]=37;
+	cities[5].neighbor[4]=47;
+	cities[5].neighbor[5]=0;
+	
+	//strcpy(cities[6].place_name,"bogota");
+	//strcpy(cities[6].place_name_short,"bg");
+	cities[6].neighbor[0]=3;
+	cities[6].neighbor[1]=27;
+	cities[6].neighbor[2]=28;
+	cities[6].neighbor[3]=31;
+	cities[6].neighbor[4]=44;
+	cities[6].neighbor[5]=0;
+	
+	//strcpy(cities[7].place_name,"beijing");
+	//strcpy(cities[7].place_name_short,"bj");
+	cities[7].neighbor[0]=40;
+	cities[7].neighbor[1]=42;
+	cities[7].neighbor[2]=0;
+	cities[7].neighbor[3]=0;
+	cities[7].neighbor[4]=0;
+	cities[7].neighbor[5]=0;
+	//strcpy(cities[8].place_name,"bangkok");
+	//strcpy(cities[8].place_name_short,"bk");
+	cities[8].neighbor[0]=9;
+	cities[8].neighbor[1]=11;
+	cities[8].neighbor[2]=15;
+	cities[8].neighbor[3]=17;
+	cities[8].neighbor[4]=18;
+	cities[8].neighbor[5]=0;
+		
+	//strcpy(cities[9].place_name,"calcutta");
+	//strcpy(cities[9].place_name_short,"cc");
+	cities[9].neighbor[0]=8;
+	cities[9].neighbor[1]=11;
+	cities[9].neighbor[2]=14;
+	cities[9].neighbor[3]=18;
+	cities[9].neighbor[4]=0;
+	cities[9].neighbor[5]=0;
+	
+	//strcpy(cities[10].place_name,"chicago");
+	//strcpy(cities[10].place_name_short,"cg");
+	cities[10].neighbor[0]=2;
+	cities[10].neighbor[1]=24;
+	cities[10].neighbor[2]=28;
+	cities[10].neighbor[3]=39;
+	cities[10].neighbor[4]=48;
+	cities[10].neighbor[5]=0;
+	
+	//strcpy(cities[11].place_name,"chennai");
+	//strcpy(cities[11].place_name_short,"cn");
+	cities[11].neighbor[0]=4;
+	cities[11].neighbor[1]=8;
+	cities[11].neighbor[2]=9;
+	cities[11].neighbor[3]=14;
+	cities[11].neighbor[4]=15;
+	cities[11].neighbor[5]=0;
+	
+	//strcpy(cities[12].place_name,"cairo");
+	//strcpy(cities[12].place_name_short,"cr");
+	cities[12].neighbor[0]=1;
+	cities[12].neighbor[1]=5;
+	cities[12].neighbor[2]=19;
+	cities[12].neighbor[3]=23;
+	cities[12].neighbor[4]=37;
+	cities[12].neighbor[5]=0;
+	
+	//strcpy(cities[13].place_name,"districtOfColumbia");
+	//strcpy(cities[13].place_name_short,"dc");
+	cities[13].neighbor[0]=2;
+	cities[13].neighbor[1]=31;
+	cities[13].neighbor[2]=34;
+	cities[13].neighbor[3]=48;
+	cities[13].neighbor[4]=0;
+	cities[13].neighbor[5]=0;
+	
+	//strcpy(cities[14].place_name,"delhi");
+	//strcpy(cities[14].place_name_short,"dh");
+	cities[14].neighbor[0]=4;
+	cities[14].neighbor[1]=9;
+	cities[14].neighbor[2]=11;
+	cities[14].neighbor[3]=21;
+	cities[14].neighbor[4]=47;
+	cities[14].neighbor[5]=0;
+	
+	//strcpy(cities[15].place_name,"djakarta");
+	//strcpy(cities[15].place_name_short,"dk");
+	cities[15].neighbor[0]=8;
+	cities[15].neighbor[1]=11;
+	cities[15].neighbor[2]=17;
+	cities[15].neighbor[3]=41;
+	cities[15].neighbor[4]=0;
+	cities[15].neighbor[5]=0;
+	
+	//strcpy(cities[16].place_name,"essen");
+	//strcpy(cities[16].place_name_short,"es");
+	cities[16].neighbor[0]=25;
+	cities[16].neighbor[1]=30;
+	cities[16].neighbor[2]=36;
+	cities[16].neighbor[3]=43;
+	cities[16].neighbor[4]=0;
+	cities[16].neighbor[5]=0;
+	
+	//strcpy(cities[17].place_name,"hoChiMinhCity");
+	//strcpy(cities[17].place_name_short,"hc");
+	cities[17].neighbor[0]=8;
+	cities[17].neighbor[1]=15;
+	cities[17].neighbor[2]=18;
+	cities[17].neighbor[3]=32;
+	cities[17].neighbor[4]=0;
+	cities[17].neighbor[5]=0;
+	
+	//strcpy(cities[18].place_name,"hongKong");
+	//strcpy(cities[18].place_name_short,"hk");
+	cities[18].neighbor[0]=8;
+	cities[18].neighbor[1]=9;
+	cities[18].neighbor[2]=17;
+	cities[18].neighbor[3]=32;
+	cities[18].neighbor[4]=40;
+	cities[18].neighbor[5]=45;
+	cities[18].neighbor[6]=0;
+	
+	//strcpy(cities[19].place_name,"istanbul");
+	//strcpy(cities[19].place_name_short,"ib");
+	cities[19].neighbor[0]=1;
+	cities[19].neighbor[1]=5;
+	cities[19].neighbor[2]=12;
+	cities[19].neighbor[3]=30;
+	cities[19].neighbor[4]=33;
+	cities[19].neighbor[5]=43;
+	cities[19].neighbor[6]=0;
+	
+	//strcpy(cities[20].place_name,"johannesburg");
+	//strcpy(cities[20].place_name_short,"jn");
+	cities[20].neighbor[0]=22;
+	cities[20].neighbor[1]=23;
+	cities[20].neighbor[2]=0;
+	cities[20].neighbor[3]=0;
+	cities[20].neighbor[4]=0;
+	cities[20].neighbor[5]=0;
+	
+	//strcpy(cities[21].place_name,"karachi");
+	//strcpy(cities[21].place_name_short,"kr");
+	cities[21].neighbor[0]=4;
+	cities[21].neighbor[1]=5;
+	cities[21].neighbor[2]=14;
+	cities[21].neighbor[3]=37;
+	cities[21].neighbor[4]=47;
+	cities[21].neighbor[5]=0;
+	
+	//strcpy(cities[22].place_name,"kinshasa");
+	//strcpy(cities[22].place_name_short,"ks");
+	cities[22].neighbor[0]=20;
+	cities[22].neighbor[1]=23;
+	cities[22].neighbor[2]=26;
+	cities[22].neighbor[3]=0;
+	cities[22].neighbor[4]=0;
+	cities[22].neighbor[5]=0;
+	
+	//strcpy(cities[23].place_name,"kutumu");
+	//strcpy(cities[23].place_name_short,"kt");
+	cities[23].neighbor[0]=12;
+	cities[23].neighbor[1]=20;
+	cities[23].neighbor[2]=22;
+	cities[23].neighbor[3]=26;
+	cities[23].neighbor[4]=0;
+	cities[23].neighbor[5]=0;
+	
+	//strcpy(cities[24].place_name,"losAngeles");
+	//strcpy(cities[24].place_name_short,"la");
+	cities[24].neighbor[0]=10;
+	cities[24].neighbor[1]=28;
+	cities[24].neighbor[2]=39;
+	cities[24].neighbor[3]=41;
+	cities[24].neighbor[4]=0;
+	cities[24].neighbor[5]=0;
+	
+	//strcpy(cities[25].place_name,"london");
+	//strcpy(cities[25].place_name_short,"ld");
+	cities[25].neighbor[0]=16;
+	cities[25].neighbor[1]=29;
+	cities[25].neighbor[2]=34;
+	cities[25].neighbor[3]=36;
+	cities[25].neighbor[4]=0;
+	cities[25].neighbor[5]=0;
+	
+	//strcpy(cities[26].place_name,"lagos");
+	//strcpy(cities[26].place_name_short,"lg");
+	cities[26].neighbor[0]=22;
+	cities[26].neighbor[1]=23;
+	cities[26].neighbor[2]=44;
+	cities[26].neighbor[3]=0;
+	cities[26].neighbor[4]=0;
+	cities[26].neighbor[5]=0;
+	
+	//strcpy(cities[27].place_name,"lima");
+	//strcpy(cities[27].place_name_short,"lm");
+	cities[27].neighbor[0]=6;
+	cities[27].neighbor[1]=28;
+	cities[27].neighbor[2]=38;
+	cities[27].neighbor[3]=0;
+	cities[27].neighbor[4]=0;
+	cities[27].neighbor[5]=0;
+	
+	//strcpy(cities[28].place_name,"mexicoCity");
+	//strcpy(cities[28].place_name_short,"mc");
+	cities[28].neighbor[0]=6;
+	cities[28].neighbor[1]=10;
+	cities[28].neighbor[2]=24;
+	cities[28].neighbor[3]=27;
+	cities[28].neighbor[4]=31;
+	cities[28].neighbor[5]=0;
+	
+	//strcpy(cities[29].place_name,"madrid");
+	//strcpy(cities[29].place_name_short,"md");
+	cities[29].neighbor[0]=1;
+	cities[29].neighbor[1]=25;
+	cities[29].neighbor[2]=34;
+	cities[29].neighbor[3]=36;
+	cities[29].neighbor[4]=44;
+	cities[29].neighbor[5]=0;
+	
+	//strcpy(cities[30].place_name,"milan");
+	//strcpy(cities[30].place_name_short,"ml");
+	cities[30].neighbor[0]=16;
+	cities[30].neighbor[1]=19;
+	cities[30].neighbor[2]=36;
+	cities[30].neighbor[3]=0;
+	cities[30].neighbor[4]=0;
+	cities[30].neighbor[5]=0;
+	
+	//strcpy(cities[31].place_name,"miami");
+	//strcpy(cities[31].place_name_short,"mm");
+	cities[31].neighbor[0]=2;
+	cities[31].neighbor[1]=6;
+	cities[31].neighbor[2]=13;
+	cities[31].neighbor[3]=28;
+	cities[31].neighbor[4]=0;
+	cities[31].neighbor[5]=0;
+	
+	//strcpy(cities[32].place_name,"manila");
+	//strcpy(cities[32].place_name_short,"mn");
+	cities[32].neighbor[0]=17;
+	cities[32].neighbor[1]=18;
+	cities[32].neighbor[2]=39;
+	cities[32].neighbor[3]=41;
+	cities[32].neighbor[4]=45;
+	cities[32].neighbor[5]=0;
+	
+	//strcpy(cities[33].place_name,"moscow");
+	//strcpy(cities[33].place_name_short,"ms");
+	cities[33].neighbor[0]=19;
+	cities[33].neighbor[1]=43;
+	cities[33].neighbor[2]=47;
+	cities[33].neighbor[3]=0;
+	cities[33].neighbor[4]=0;
+	cities[33].neighbor[5]=0;
+	
+	//strcpy(cities[34].place_name,"newYork");
+	//strcpy(cities[34].place_name_short,"ny");
+	cities[34].neighbor[0]=13;
+	cities[34].neighbor[1]=25;
+	cities[34].neighbor[2]=29;
+	cities[34].neighbor[3]=48;
+	cities[34].neighbor[4]=0;
+	cities[34].neighbor[5]=0;
+	
+	//strcpy(cities[35].place_name,"osaka");
+	//strcpy(cities[35].place_name_short,"os");
+	cities[35].neighbor[0]=45;
+	cities[35].neighbor[1]=46;
+	cities[35].neighbor[2]=0;
+	cities[35].neighbor[3]=0;
+	cities[35].neighbor[4]=0;
+	cities[35].neighbor[5]=0;
+	
+	//strcpy(cities[36].place_name,"paris");
+	//strcpy(cities[36].place_name_short,"pr");
+	cities[36].neighbor[0]=1;
+	cities[36].neighbor[1]=16;
+	cities[36].neighbor[2]=25;
+	cities[36].neighbor[3]=29;
+	cities[36].neighbor[4]=30;
+	cities[36].neighbor[5]=0;
+	
+	//strcpy(cities[37].place_name,"riyadh");
+	//strcpy(cities[37].place_name_short,"rd");
+	cities[37].neighbor[0]=5;
+	cities[37].neighbor[1]=12;
+	cities[37].neighbor[2]=21;
+	cities[37].neighbor[3]=0;
+	cities[37].neighbor[4]=0;
+	cities[37].neighbor[5]=0;
+	
+	//strcpy(cities[38].place_name,"sanDiego");
+	//strcpy(cities[38].place_name_short,"sd");
+	cities[38].neighbor[0]=27;
+	cities[38].neighbor[1]=0;
+	cities[38].neighbor[2]=0;
+	cities[38].neighbor[3]=0;
+	cities[38].neighbor[4]=0;
+	cities[38].neighbor[5]=0;
+	
+	//strcpy(cities[39].place_name,"sanFrancisco");
+	//strcpy(cities[39].place_name_short,"sf");
+	cities[39].neighbor[0]=10;
+	cities[39].neighbor[1]=24;
+	cities[39].neighbor[2]=32;
+	cities[39].neighbor[3]=46;
+	cities[39].neighbor[4]=0;
+	cities[39].neighbor[5]=0;
+	
+	//strcpy(cities[40].place_name,"shanghai");
+	//strcpy(cities[40].place_name_short,"sh");
+	cities[40].neighbor[0]=7;
+	cities[40].neighbor[1]=18;
+	cities[40].neighbor[2]=42;
+	cities[40].neighbor[3]=45;
+	cities[40].neighbor[4]=46;
+	cities[40].neighbor[5]=0;
+	
+	//strcpy(cities[41].place_name,"sydney");
+	//strcpy(cities[41].place_name_short,"sn");
+	cities[41].neighbor[0]=15;
+	cities[41].neighbor[1]=24;
+	cities[41].neighbor[2]=32;
+	cities[41].neighbor[3]=0;
+	cities[41].neighbor[4]=0;
+	cities[41].neighbor[5]=0;
+	
+	//strcpy(cities[42].place_name,"seoul");
+	//strcpy(cities[42].place_name_short,"so");
+	cities[42].neighbor[0]=7;
+	cities[42].neighbor[1]=40;
+	cities[42].neighbor[2]=46;
+	cities[42].neighbor[3]=0;
+	cities[42].neighbor[4]=0;
+	cities[42].neighbor[5]=0;
+	
+	//strcpy(cities[43].place_name,"saintPetersburg");
+	//strcpy(cities[43].place_name_short,"sp");
+	cities[43].neighbor[0]=16;
+	cities[43].neighbor[1]=19;
+	cities[43].neighbor[2]=33;
+	cities[43].neighbor[3]=0;
+	cities[43].neighbor[4]=0;
+	cities[43].neighbor[5]=0;
+	
+	//strcpy(cities[44].place_name,"saoPaulo");
+	//strcpy(cities[44].place_name_short,"su");
+	cities[44].neighbor[0]=3;
+	cities[44].neighbor[1]=6;
+	cities[44].neighbor[2]=26;
+	cities[44].neighbor[3]=29;
+	cities[44].neighbor[4]=0;
+	cities[44].neighbor[5]=0;
+	
+	//strcpy(cities[45].place_name,"taibei");
+	//strcpy(cities[45].place_name_short,"tb");
+	cities[45].neighbor[0]=18;
+	cities[45].neighbor[1]=32;
+	cities[45].neighbor[2]=35;
+	cities[45].neighbor[3]=40;
+	cities[45].neighbor[4]=0;
+	cities[45].neighbor[5]=0;
+	
+	//strcpy(cities[46].place_name,"tokyo");
+	//strcpy(cities[46].place_name_short,"tk");
+	cities[46].neighbor[0]=35;
+	cities[46].neighbor[1]=39;
+	cities[46].neighbor[2]=40;
+	cities[46].neighbor[3]=42;
+	cities[46].neighbor[4]=0;
+	cities[46].neighbor[5]=0;
+	
+	//strcpy(cities[47].place_name,"tehran");
+	//strcpy(cities[47].place_name_short,"tr");
+	cities[47].neighbor[0]=5;
+	cities[47].neighbor[1]=14;
+	cities[47].neighbor[2]=21;
+	cities[47].neighbor[3]=33;
+	cities[47].neighbor[4]=0;
+	cities[47].neighbor[5]=0;
+	
+	//strcpy(cities[48].place_name,"toronto");
+	//strcpy(cities[48].place_name_short,"tt");
+	cities[48].neighbor[0]=10;
+	cities[48].neighbor[1]=13;
+	cities[48].neighbor[2]=34;
+	cities[48].neighbor[3]=0;
+	cities[48].neighbor[4]=0;
+	cities[48].neighbor[5]=0;
+	
