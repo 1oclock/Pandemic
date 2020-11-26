@@ -16,9 +16,10 @@ while (GetMessage(&msg, NULL, 0, 0)){\
 	TranslateMessage(&msg);\
 	DispatchMessage(&msg);\
 	if(isMouseTouched)break;\
-}
+}\
+isMouseTouched=false;
 #define WAIT_UNTIL_REDRAW \
-isRedrawed=false;\
+InvalidateRect(hwnd,NULL,0);isRedrawed=false;\
 while (GetMessage(&msg, NULL, 0, 0)){\
 	TranslateMessage(&msg);\
 	DispatchMessage(&msg);\
@@ -32,7 +33,7 @@ int infectRate=0;
 int numOfResearch = 0;
 int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
-bool isMouseTouched, isRedrawed; int latestX, latestY;
+bool isMouseTouched, isRedrawed; int latestX, latestY; int nowPlayer=0;
 bool flag;
 
 typedef struct _Color {
@@ -52,13 +53,14 @@ typedef struct _HandCard {
 HandCard emptyCard;
 std::vector<HandCard> toUseHandCards;
 std::vector<HandCard> usedHandCards;
-void showUsedHC(); void showUsedVC();
+void showUsedHC(); void showUsedVC(); int getClickOfCardPlc();
 typedef struct _VirusCard {
 	int nCitynum;
 	_VirusCard(int x=0):nCitynum(x){}
 }VirusCard;
 std::vector<VirusCard> toUseVirusCards;
 std::vector<VirusCard> usedVirusCards;
+int getClickOfCardPlc();
 class City{
 private:
 	int neighbor[10];
@@ -94,13 +96,13 @@ void epidemic();
 class Player {
 protected:
 	int cardToCure;
-	void discardCard(HandCard& h);
+	void discardCard(HandCard& h,bool toused);
 	void addCard(HandCard h);
 public:
 	char playerType;
 	int num;
 	int nowCity;
-	Player();
+	Player(int n);
 	HandCard handCards[7];
 	int remainMove;
 	void drive(int c);//correctnesses of all the functions here is protected by outside. These are all noexcept.
@@ -109,9 +111,9 @@ public:
 	void shuttleFlight(int cWithResearch);
 	virtual void buildResearch(HandCard& h);
 	void removeResearch();
-	void discoverCure(HandCard* hs);
-	virtual void treatDisease();
-	virtual void /*a.k.a.share knowledge*/ deliverCard(HandCard h, Player& p,bool isGive);
+	bool discoverCure(HandCard* hs);
+	virtual bool treatDisease();
+	virtual void /*a.k.a.share knowledge*/ deliverCard(HandCard h, Player* p,bool isGive);
 	virtual void skill() = 0;
 	void touchCards();
 	void drawCards();
@@ -119,40 +121,52 @@ public:
 };
 Player* players[4];
 class SkilllessPlayer :public Player {
+public:
+	SkilllessPlayer(int n) :Player(n) { playerType = 'n'; }
 	virtual void skill() {}//this is a testing skillless player
 };
 class Actor :public Player {
+public:
+	Actor(int n) :Player(n) { playerType = 'a'; }
 	virtual void skill() {/*actually overload buildResearch();here to concrete it,below same*/}
 	virtual void buildResearch(HandCard& h);
 };
 class Dispatcher :public Player {
+public:
+	Dispatcher(int n) :Player(n) { playerType = 'd'; }
 	virtual void skill() {
 		//here really need to write something, but I have no idea now
 	}
 };
 class Medic :public Player {
+public:
+	Medic(int n) :Player(n) { playerType = 'd'; }
 	virtual void skill(){}
-	virtual void treatDisease();
+	virtual bool treatDisease();
 };
 class Researcher :public Player {
-	virtual void skill(){}
+public:
+	Researcher(int n) :Player(n) { playerType = 'r'; }
+	virtual void skill(){}//outside check,no need to overload
 };
 class Scientist :public Player {
+public:
 	virtual void skill(){}
-	Scientist();//only need to override constructor to change cardToCure to 4
+	Scientist(int n) :Player(n) { playerType = 's'; cardToCure = 4; }//only need to override constructor to change cardToCure to 4
 };
 
 void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp);
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow)
-{
+const wchar_t* event[] = { L"airmove",L"boom",L"foresee",L"fund",L"silent" };
+const wchar_t* eventC[] = { L"空运",L"人口快速恢复",L"预测",L"政府拨款",L"寂静的一夜" };
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow){
 	srand(time(0));
 #include "colorinit.txt"
 	City::init();
-	players[0] = new SkilllessPlayer(); players[0]->num = 0;
-	players[1] = new SkilllessPlayer(); players[1]->num = 1;
-	players[2] = new SkilllessPlayer(); players[1]->num = 2;
-	players[3] = new SkilllessPlayer(); players[1]->num = 3;
+	players[0] = new SkilllessPlayer(0); cities[2].isPeopleHere[0] = true;
+	players[1] = new SkilllessPlayer(1); cities[2].isPeopleHere[1] = true;
+	players[2] = new SkilllessPlayer(2); cities[2].isPeopleHere[2] = true;
+	players[3] = new SkilllessPlayer(3); cities[2].isPeopleHere[3] = true;
 	for (int i = 1; i <= 48; i++)
 		toUseVirusCards.emplace_back(i),
 		toUseHandCards.emplace_back(0, i);
@@ -181,62 +195,320 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	SetWindowLong(hwnd, GWL_STYLE, dwStyle);//*/
 	ShowWindow(hwnd, iCmdShow);
 	UpdateWindow(hwnd);
-	int sz = toUseHandCards.size();
+	int sz =(int) toUseHandCards.size();
 	for (int i = 0; i < difficulty; i++) {
 		int t = rand() % (sz / difficulty) + (sz / difficulty + 1) * (i);
 		toUseHandCards.insert(toUseHandCards.begin()+t, _HandCard(2, 0));
 	}
-	int nowPlayer = 0;
+	nowPlayer = 0; bool flag = false, flag1 = false, flag2; wchar_t info[100];
+
 	while (1) {
+		players[nowPlayer]->remainMove = 4;
 		while (players[nowPlayer]->remainMove) {
-			WAIT_UNTIL_MOUSE_INPUT;
+			HDC hdc = GetDC(hwnd);
+			wchar_t uu[200] = L"还有x个行动";
+			SetTextColor(hdc, RGB(0, 0, 0)); SetBkColor(hdc, RGB(255, 255, 255));
+			uu[2] = L'0' + players[nowPlayer]->remainMove;
+			TextOut(hdc, 1050, 730, uu, wcslen(uu));
+			ReleaseDC(hwnd,hdc);
+			WAIT_UNTIL_MOUSE_INPUT; //wsprintf(info, L"%d %d", latestX, latestY); MessageBox(hwnd, info, info, 0);
 			if (isin(16, 60, 717, 749)) {
-				//drive
+				//
+				MessageBox(hwnd, L"请点击你想要去的城市来驾车去\n如果后悔了，点击取消", L"坐车", 0);
+				while (1) {
+					WAIT_UNTIL_MOUSE_INPUT;
+					if (isin(847, 901, 714, 743))break;
+					flag = false;
+					for (int i = 1; i <= 48; i++) {
+						if (cities[i].isClickNear(latestX, latestY)) {
+							if (cities[i].isNeighbor(cities[players[nowPlayer]->nowCity])) {
+								if (cities[i].confirmSelection(L"坐车"))
+									players[nowPlayer]->drive(i), flag = true;
+								else
+									flag = false;
+							}
+							else {
+								wsprintf(info, L"%s不是你的邻居，你不能去那里", cities[i].chineseName);
+								MessageBox(hwnd, info, L"错误", MB_ICONEXCLAMATION);
+							}
+							break;
+						}
+					}
+					if (flag)
+						break;
+					else 
+						MessageBox(hwnd, L"请重新选择或点击取消", L"坐车", 0);
+				}
 			}
-			if (isin(70, 116, 717, 749)) {
-				//directflight
+			else if (isin(70, 116, 717, 749)) {
+				//direct flight
+				MessageBox(hwnd, L"请点击你想去的城市来乘坐直航\n你无需选择卡牌，系统将自动将对应的卡牌弃去\n如果后悔了，点击取消",L"直航",0);
+				while (1) {
+					WAIT_UNTIL_MOUSE_INPUT;
+					if (isin(847, 901, 714, 743))break;
+					flag = false;
+					for (int i = 1; i <= 48; i++) {
+						if (cities[i].isClickNear(latestX, latestY)) {
+							flag1 = false;
+							int j;
+							for (j = 0; j < 7; j++) {
+								if (players[nowPlayer]->handCards[j].cardType == 0 && players[nowPlayer]->handCards[j].nCityNum == i) {
+									flag1 = true; break;
+								}
+							}
+							if (flag1) {
+								if (cities[i].confirmSelection(L"直航"))
+									players[nowPlayer]->directFlight(players[nowPlayer]->handCards[j]), flag = true;
+								else
+									flag = false;
+							}
+							else {
+								wsprintf(info, L"你没有%s牌，你不能去那里", cities[i].chineseName); flag = false;
+								MessageBox(hwnd, info, L"错误", MB_ICONEXCLAMATION);
+							}
+							break;
+						}
+					}
+					if (flag)break;
+					else MessageBox(hwnd, L"请重新选择或点击取消", L"直航", 0);
+				}
 			}
-			if (isin(128, 175, 717, 749)) {
-				//charterflight
+			else if (isin(128, 175, 717, 749)) {
+				//chatter flight
+				int j;
+				flag1 = false;
+				for (j = 0; j < 7; j++) {
+					if (players[nowPlayer]->handCards[j].cardType == 0 && players[nowPlayer]->handCards[j].nCityNum == players[nowPlayer]->nowCity){
+						flag1 = true; break;
+					}
+				}
+				if (flag1) {
+					MessageBox(hwnd, L"请点击你想去的城市来乘坐包机\n你无需选择卡牌，系统将自动将本地的卡牌弃去\n如果后悔了，点击取消", L"包机", 0);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(847, 901, 714, 743))break;
+						flag = false;
+						for (int i = 1; i <= 48; i++) {
+							if (cities[i].isClickNear(latestX, latestY)) {
+								if (cities[i].confirmSelection(L"包机"))
+									players[nowPlayer]->charterFlight(players[nowPlayer]->handCards[j],i), flag = true;
+								else
+									flag = false;
+								break;
+							}
+						}
+						if (flag)break;
+						else MessageBox(hwnd, L"请重新选择或点击取消", L"包机", 0);
+					}
+				}
+				else {
+					MessageBox(hwnd, L"你没有本地牌，不能包机", L"错误", MB_ICONEXCLAMATION);
+				}
 			}
-			if (isin(181, 315, 717, 749)) {
-				//shuttleflight
+			else if (isin(181, 315, 717, 749)) {
+				//shuttle flight
+				if (cities[players[nowPlayer]->nowCity].hasResearch) {
+					MessageBox(hwnd, L"请点击你想去的有研究所的城市来乘坐定点往返班机\n如果后悔了，点击取消", L"定点往返班机", 0);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(847, 901, 714, 743))break;
+						flag = false;
+						for (int i = 1; i <= 48; i++) {
+							if (cities[i].isClickNear(latestX, latestY)) {
+								if (cities[i].hasResearch) {
+									if (cities[i].confirmSelection(L"定点往返班机"))
+										players[nowPlayer]->shuttleFlight(i), flag = true;
+									else
+										flag = false;
+									break;
+								}
+								else
+									MessageBox(hwnd, L"那里没有研究所，不能定点往返班机", L"错误", MB_ICONEXCLAMATION);
+							}
+						}
+						if (flag)break;
+						else MessageBox(hwnd, L"请重新选择或点击取消", L"包机", 0);
+					}
+				}
+				else
+					MessageBox(hwnd, L"这里没有研究所，不能定点往返班机", L"错误", MB_ICONEXCLAMATION);
 			}
-			if (isin(324, 414, 717, 749)) {
+			else if (isin(324, 414, 717, 749)) {
 				//curedisease
+				if (cities[players[nowPlayer]->nowCity].confirmSelection(L"治疗疾病")) {
+					if (players[nowPlayer]->treatDisease())
+						MessageBox(hwnd, L"成功治疗了疾病", L"治疗成功", 0);
+					else
+						MessageBox(hwnd, L"这里没有疾病", L"治疗失败", 0);
+				}
 			}
-			if (isin(422, 531, 717, 749)) {
+			else if (isin(422, 531, 717, 749)) {
 				//buildresearch
+				int j;
+				flag1 = players[nowPlayer]->playerType=='a';
+				for (j = 0; j < 7; j++) {
+					if (players[nowPlayer]->handCards[j].cardType == 0 && players[nowPlayer]->handCards[j].nCityNum == players[nowPlayer]->nowCity) {
+						flag1 = true; break;
+					}
+				}
+				if (j == 7)j = 6;
+				if (flag1) {
+					if (cities[players[nowPlayer]->nowCity].confirmSelection(L"建研究所"))
+						players[nowPlayer]->buildResearch(players[nowPlayer]->handCards[j]);
+				}
+				else
+					MessageBox(hwnd, L"你没有本地牌，也不是行动专家，不能建研究所", L"错误", MB_ICONEXCLAMATION);
 			}
-			if (isin(546, 627, 717, 749)) {
+			else if (isin(546, 627, 717, 749)) {
 				//findcure
+				bool chosen[8]; HandCard cdChosen[7]; bool qx = false; set0(chosen); int cnt = 0;
+				if (cities[players[nowPlayer]->nowCity].hasResearch) {
+					MessageBox(hwnd, L"请选择想要用来找到解药的牌，取消放弃\n再按一次发现解药按钮确认选择\n注意：必须恰好5张（科学家4张），多、错、漏均不行", L"找解药", 0);
+					HDC hdc = GetDC(hwnd);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(546, 627, 717, 749)) {
+							qx = false; break;
+						}
+						if (isin(847, 901, 714, 743)) {
+							qx = true; break;
+						}
+						chosen[getClickOfCardPlc()] ^= 1;
+						wchar_t uu[200] = L"已经选定的牌分别是第（从左到右从上到下）："; wchar_t xx[3] = L"1 ";
+						SetTextColor(hdc, RGB(0, 0, 0)); SetBkColor(hdc, RGB(255, 255, 255));
+						TextOut(hdc, 1050, 730, L"                                                                                                                                    ", 133);
+						for (int i = 0; i < 7; i++)
+							if (chosen[i])
+								xx[0] = i + '1', wcscat(uu, xx);
+						wcscat(uu, L"张牌");
+						TextOut(hdc, 1050, 730, uu, wcslen(uu));
+					}
+					TextOut(hdc, 1050, 730, L"                                                                                                                                    ", 133);
+					ReleaseDC(hwnd, hdc);
+					if (!qx) {
+						for (int i = 0; i < 7; i++)
+							if (chosen[i])
+								cdChosen[cnt++] = players[nowPlayer]->handCards[i];
+						int co = cities[cdChosen[0].nCityNum].color; wchar_t uu[200];
+						wsprintf(uu, L"%s色病毒已治愈", colors[co].chineseName);
+						cdChosen[cnt] = _HandCard(-1, -1);
+						if (players[nowPlayer]->discoverCure(cdChosen))
+							MessageBox(hwnd, uu, L"发现解药", 0);
+						else
+							MessageBox(hwnd, L"给出的牌不符合要求", L"错误", MB_ICONEXCLAMATION);
+					}
+				}
+				else {
+					MessageBox(hwnd, L"这里没有研究所", L"错误", MB_ICONEXCLAMATION);
+				}
 			}
-			if (isin(642, 727, 717, 749)) {
+			else if (isin(642, 727, 717, 749)) {
 				//change card
+				int j; int toPeople = -1; bool isgive = false;
+				MessageBox(hwnd, L"请通过点击头像选择给牌对象\n取消放弃",L"给牌",0);
+				while (1) {
+					WAIT_UNTIL_MOUSE_INPUT;
+					if (isin(847, 901, 714, 743))break;
+					if (isin(1200, 1280, 700, 720)) {
+						toPeople = ((latestX - 1200) / 20+nowPlayer)%4;
+						if (players[toPeople]->nowCity == players[nowPlayer]->nowCity) {
+							isgive = MessageBox(hwnd, L"给出牌还是收到牌？\n给出点是，收到点否", L"选择方向", MB_YESNO | MB_ICONQUESTION) == IDYES;
+							break;
+						}
+						else
+							MessageBox(hwnd, L"两个人不在同一个城市，不能给出牌", L"错误",MB_ICONEXCLAMATION);
+					}
+				}
+				if (toPeople != -1) {
+					if (isgive) {
+						if (players[nowPlayer]->playerType == 'r') {
+							MessageBox(hwnd, L"请选择要给出的牌\n取消放弃", L"给牌", 0);
+							while (1) {
+								WAIT_UNTIL_MOUSE_INPUT;
+								if (isin(847, 901, 714, 743))break;
+								int togivec = getClickOfCardPlc();
+								if (togivec != 7) {
+									if (players[nowPlayer]->handCards[togivec].cardType == 0) {
+										if (cities[players[nowPlayer]->handCards[togivec].nCityNum].confirmSelection(L"给牌")) {
+											players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[togivec], players[toPeople], 1);
+											break;
+										}
+										else {
+											wchar_t u[200]; wsprintf(u, L"你确定要把特别行动牌%s给出吗？", eventC[players[nowPlayer]->handCards[togivec].nCityNum]);
+											if (MessageBox(hwnd, u, L"给牌操作确认", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+												players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[togivec], players[toPeople], 1);
+												break;
+											}
+										}
+									}
+								}
+							}
+						}
+						else {
+							flag1 = false;
+							for (j = 0; j < 7; j++) {
+								if (players[nowPlayer]->handCards[j].cardType == 0 && players[nowPlayer]->handCards[j].nCityNum == players[nowPlayer]->nowCity) {
+									flag1 = true; break;
+								}
+							}
+							if (flag1) {
+								if (cities[players[nowPlayer]->nowCity].confirmSelection(L"给出本地牌")) {
+									players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[j], players[toPeople], 1);
+								}
+							}
+							else
+								MessageBox(hwnd, L"你没有本地牌，不能给出牌", L"错误", MB_ICONEXCLAMATION);
+						}
+					}
+					else {
+						flag1 = false;
+						for (j = 0; j < 7; j++) {
+							if (players[toPeople]->handCards[j].cardType == 0 && players[toPeople]->handCards[j].nCityNum == players[nowPlayer]->nowCity) {
+								flag1 = true; break;
+							}
+						}
+						if (flag1) {
+							if (cities[players[nowPlayer]->nowCity].confirmSelection(L"收到本地牌")) {
+								players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[j], players[toPeople], 1);
+							}
+						}
+						else
+							MessageBox(hwnd, L"对方没有本地牌，不能收到牌", L"错误", MB_ICONEXCLAMATION);
+					}
+				}
+				//complicated! by yxc
 			}
-			if (isin(734, 824, 717, 749)) {
+			else if (isin(734, 824, 717, 749)) {
+				//end turn
 				break;
 			}
-			if (isin(879, 1007, 535, 867)) {
+			else if (isin(879, 1007, 535, 867)) {
 				showUsedHC();
 			}
-			if (isin(870, 1070, 22, 132)) {
+			else if (isin(870, 1070, 22, 132)) {
 				showUsedVC();
 			}
-			for (int i = 1; i <= 48; i++) {
-				break;
-				if (cities[i].isClickNear(latestX, latestY)) {
-					if (cities[i].confirmSelection(L"乘车"))
-						MessageBox(hwnd, L"1", L"1", 0);
-					else
-						MessageBox(hwnd, L"0", L"0", 0);
+			else {
+				for (int i = 1; i <= 48; i++) {
 					break;
+					if (cities[i].isClickNear(latestX, latestY)) {
+						if (cities[i].confirmSelection(L"乘车"))
+							MessageBox(hwnd, L"1", L"1", 0);
+						else
+							MessageBox(hwnd, L"0", L"0", 0);
+						break;
+					}
 				}
 			}
 			WAIT_UNTIL_REDRAW;
 		}
+		players[nowPlayer]->touchCards();
+		WAIT_UNTIL_REDRAW;
+		players[nowPlayer]->infectVirus();
+		nowPlayer = (nowPlayer + 1) % 4;
+		WAIT_UNTIL_REDRAW;
 	}
-	return msg.wParam;
+	return 0;
 }
 void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp) {
 	PAINTSTRUCT ps;
@@ -252,16 +524,27 @@ const int outbreakTrackX[9] = { 57,96,57,96,57,96,57,96,57 };
 const int outbreakTrackY[9] = { 407,438,467,498,530,560,590,620,650 };
 const int infectRateX[8] = { 709,757,805,857,903,956,1005 };
 const int infectRateY[8] = { 140,155,160,165,159,154,141 };
+#define setPenAndBrush(i,r,g,b) pen[i] = CreatePen(PS_SOLID, 1, RGB(r,g,b)); brush[i] = CreateSolidBrush(RGB(r,g,b));
+#define selobj(i) SelectObject(hdc,pen[i]);SelectObject(hdc,brush[i]);
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
+	HDC hdc;
 	switch (message){
 	case WM_CREATE:
 		return 0;
 	case WM_PAINT:
 		wchar_t c[40];
+		drawBitmap(L"Pictures/white.bmp", 1500, 1000, 0, 0);
 		drawBitmap(L"Pictures/main_background.bmp", 1200, 700, 0, 0);
 		drawBitmap(L"Pictures/hback.bmp", 128, 152, 715, 535);
 		drawBitmap(L"Pictures/movements.bmp", 1117, 55, 0, 701);
-		system("Pictures/cities/city4/info.txt");
+		hdc = GetDC(hwnd);HPEN pen[4]; HBRUSH brush[4];
+		setPenAndBrush(0, 255,255,255); setPenAndBrush(1, 0, 255, 0); setPenAndBrush(2, 255, 0, 255); setPenAndBrush(3, 0, 255, 255);
+		pen[0] = CreatePen(PS_SOLID, 2, RGB(128, 128, 128));
+		for (int i = 0; i < 4; i++) {
+			selobj((nowPlayer + i) % 4);
+			Ellipse(hdc,1200 + i * 20, 700, 1220 + i * 20, 720);
+		}
+		ReleaseDC(hwnd,hdc);
 		if (usedHandCards.size()) {
 			wsprintf(c, L"Pictures/cities/city%d/h.bmp",(*usedHandCards.rbegin()).nCityNum);
 			drawBitmap(c, 128, 152, 879, 535);
@@ -278,7 +561,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 		else
 			drawBitmap(L"Pictures/O2.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
 		drawBitmap(L"Pictures/infRate.bmp", 42, 37, infectRateX[infectRate], infectRateY[infectRate]);
-		players[0]->drawCards();
+		players[nowPlayer]->drawCards();
 		for (int i = 0; i < 4; i++) {
 			wchar_t nm[30]; swprintf_s(nm, L"Pictures/cureEff/%c%d.bmp", colors[i].englishName, colors[i].cureStatus);
 			//MessageBox(hwnd, nm, L"abc", 0);
@@ -295,19 +578,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 	case WM_LBUTTONDOWN:
 		int mouse_x = (int)LOWORD(lParam);
 		int mouse_y = (int)HIWORD(lParam);
-		isMouseTouched = 1; latestX = mouse_x; latestY = mouse_y;
-		wchar_t a[200]; 
-		if (mouse_y > 700)outbreakTrack++;
-		if (mouse_x > 1200)infectRate++;
-		if (wParam & (WM_LBUTTONDOWN))
-			swprintf_s(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
+		isMouseTouched = 1; latestX = mouse_x; latestY = mouse_y; wchar_t a[200];
+		wsprintf(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
 		return 0;
 	}
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-City::City() :num(this-cities){
-	int t = this - cities, u = 0, i = 0;
+
+City::City() :num((int)(this-cities)){
+	int t =(int)( this - cities), u = 0, i = 0;
 	set0(hasVirus); set0(isPeopleHere);
 	hasOutbreak = hasResearch = false;
 	hasVirus[0] = hasVirus[1] = hasVirus[2] =false; 
@@ -317,10 +597,8 @@ City::City() :num(this-cities){
 void City::init() {
 #include "cityinit.txt"
 }
-#define setPenAndBrush(i,r,g,b) pen[i] = CreatePen(PS_SOLID, 1, RGB(r,g,b)); brush[i] = CreateSolidBrush(RGB(r,g,b));
 void City::redraw() {
 	wchar_t str[20];
-	PAINTSTRUCT ps;
 	HDC hdc = GetDC(hwnd);
 	HPEN pen[4]; HBRUSH brush[4];
 	//colVirus[0] = colVirus[1] = colVirus[2] = color;
@@ -372,11 +650,12 @@ void City::redraw() {
 	DeleteObject(pen[2]); DeleteObject(brush[2]); DeleteObject(pen[3]); DeleteObject(brush[3]);
 	ReleaseDC(hwnd, hdc);
 }//*/
-Player::Player() {
-	cardToCure = 5; this->nowCity = 2; playerType = 'n';
+Player::Player(int n) {
+	cardToCure = 5; this->nowCity = 2; playerType = 'n'; num = n;
+	for (int i = 0; i < 7; i++)
+		handCards[i] = _HandCard(-1, -1);
 }
-const wchar_t* event[] = { L"airmove",L"boom",L"foresee",L"fund",L"silent" };
-const wchar_t* eventC[] = { L"空运",L"人口快速恢复",L"预测",L"政府拨款",L"寂静的一夜" };
+
 void Player::drawCards() {
 	wchar_t nm[100];
 	for (int i = 0; i < 7; i++) {
@@ -391,6 +670,11 @@ void Player::drawCards() {
 		else return;
 	}
 	return;
+}
+int getClickOfCardPlc() {
+	if (latestX < 1200 || latestX>1440 || latestY > 600)
+		return 7;
+	return (latestY / 150) * 2 + (latestX > 1320);
 }
 bool City::operator== (City c) {
 	return num == c.num;
@@ -507,11 +791,13 @@ void showUsedVC() {
 	}
 	MessageBox(hwnd, info, L"已经弃掉的病毒牌信息", 0);
 }
-void Player::discardCard(HandCard& h) {
+void Player::discardCard(HandCard& h,bool toused) {
 	for (int i = 0; i < 7; i++) {
 		if (handCards[i] == h) {
-			for (int j = 6; j > i; j--)
-				handCards[j] = handCards[j - 1];
+			if (toused)
+				usedHandCards.push_back(h);
+			for (int j = i; j < 6; j++)
+				handCards[j] = handCards[j + 1];
 			handCards[6].cardType = -1;
 			break;
 		}
@@ -520,7 +806,7 @@ void Player::discardCard(HandCard& h) {
 void Player::buildResearch(HandCard& h){
 	cities[nowCity].hasResearch = true;
 	numOfResearch++;
-	discardCard(h);
+	discardCard(h,1);
 	remainMove--;
 }
 void Actor::buildResearch(HandCard& h) {
@@ -536,42 +822,52 @@ void Player::drive(int c) {
 }
 void Player::directFlight(HandCard& h) {
 	drive(h.nCityNum);
-	discardCard(h);
+	discardCard(h,1);
 }
 void Player::charterFlight(HandCard& h, int to) {
 	drive(to);
-	discardCard(h);
+	discardCard(h,1);
 }
 void Player::shuttleFlight(int cWithResearch) {
 	drive(cWithResearch);
 }
-void Player::treatDisease(){
-	remainMove-=cities[nowCity].subVirus();
+bool Player::treatDisease(){
+	bool ret;
+	remainMove -= ret = cities[nowCity].subVirus();
+	return ret;
 }
-void Medic::treatDisease() {
+bool Medic::treatDisease() {
 	bool t = cities[nowCity].subVirus() | cities[nowCity].subVirus() | cities[nowCity].subVirus();
 	if (colors[cities[nowCity].color].cureStatus == 0)
 		remainMove -= t;
+	return t;
 }
 void Player::addCard(HandCard h) {
-	if (~handCards[6].cardType) {
-		//MessageBox
-		//wait for mouse input
-		//delete one
+	if(h.cardType==0)
+		MessageBox(hwnd, cities[h.nCityNum].chineseName, L"摸到了：", 0);
+	if (h.cardType == 1)
+		MessageBox(hwnd, eventC[h.nCityNum], L"摸到了", 0);
+	if (handCards[6].cardType!=-1) {
+		MessageBox(hwnd, L"你的牌多于7张了，需要弃去\n点击有牌的地方弃牌，没牌的地方不摸牌", L"牌数过多", 0);
+		MSG msg;
+		WAIT_UNTIL_MOUSE_INPUT;
+		int t = getClickOfCardPlc();
+		if (t == 7)return;
+		else discardCard(handCards[t],1);
 	}
-	for (int i = 0; i < 7; i++)
-		if (~handCards[i].cardType) {
+	for (int i=0;i<7;i++)
+		if (handCards[i].cardType==-1) {
 			handCards[i] = h;
 			return;
 		}
 }
-void Player::deliverCard(HandCard h, Player& p, bool isGive){
+void Player::deliverCard(HandCard h, Player* p, bool isGive){
 	if (isGive) {
-		discardCard(h);
-		p.addCard(h);
+		discardCard(h,0);
+		p->addCard(h);
 	}
 	else {
-		p.discardCard(h);
+		p->discardCard(h,0);
 		addCard(h);
 	}
 }
@@ -580,8 +876,8 @@ void Player::removeResearch() {
 }
 void Player::infectVirus() {
 	wchar_t info[200]=L"在";
-	for (int i = 0; i < infectRate; i++) {
-		auto t = *toUseVirusCards.rbegin();
+	for (int i = 0; i < cardNumByRate[infectRate]; i++) {
+		auto t = toUseVirusCards.back(); //MessageBox(hwnd, cities[t.nCitynum].chineseName, L"a", 0);
 		cities[t.nCitynum].addVirus();
 		wcscat(info, cities[t.nCitynum].chineseName);
 		wcscat(info, L" ");
@@ -593,34 +889,45 @@ void Player::infectVirus() {
 }
 void Player::touchCards() {
 	for (int i = 0; i < 2; i++) {
-		auto t = *toUseHandCards.rbegin();
-		if (t.cardType == 2)epidemic();
+		auto t = toUseHandCards.back();
+		if (t.cardType == 2) {
+			MessageBox(hwnd, L"发生了蔓延！", L"oops", 0) ;
+			epidemic();
+			toUseHandCards.pop_back();
+			usedHandCards.push_back(t);
+		}
 		else {
 			addCard(t);
-			usedHandCards.push_back(t);
-			usedVirusCards.pop_back();
+			toUseHandCards.pop_back();
 		}
 	}
 }
-void Player::discoverCure(HandCard* h) {
+bool Player::discoverCure(HandCard* h) {
 	int co = cities[h->nCityNum].color;
 	for (int i = 0; i < cardToCure; i++) {
-		discardCard(h[i]);
+		if (h[i].cardType != 0 || cities[h[i].nCityNum].color != co)
+			return false;
+	}
+	if (h[cardToCure].cardType != -1)return false;
+	for (int i = 0; i < cardToCure; i++) {
+		discardCard(h[i],1);
 	}
 	colors[co].cureStatus = 1;
 	remainMove--;
+	return true;
 }
 void epidemic() {
 	infectRate++;
+	MessageBox(hwnd, cities[toUseVirusCards[0].nCitynum].chineseName, L"要增加三个病毒的位置：", 0);
 	for (int i = 0; i < 3; i++)cities[toUseVirusCards[0].nCitynum].addVirus();
 	usedVirusCards.push_back(toUseVirusCards[0]);
-	int sz = toUseVirusCards.size();
+	int sz =(int) toUseVirusCards.size();
 	for (int i = 1; i < sz; i++)
 		toUseVirusCards[i] = toUseVirusCards[i - 1];
 	toUseVirusCards.pop_back();
 	std::random_shuffle(usedVirusCards.begin(), usedVirusCards.end());
 	while (usedVirusCards.size()) {
-		toUseVirusCards.push_back(*usedVirusCards.rbegin());
+		toUseVirusCards.push_back(usedVirusCards.back());
 		usedVirusCards.pop_back();
 	}
 }
