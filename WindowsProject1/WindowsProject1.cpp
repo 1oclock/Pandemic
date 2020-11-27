@@ -511,6 +511,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	return 0;
 }
 void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("drawBitmap",f);
+	fclose(f);
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hwnd, &ps), dc = GetDC(hwnd),H1;
 	RECT rect; GetClientRect(hwnd, &rect);
@@ -518,6 +521,10 @@ void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp
 	H1 = CreateCompatibleDC(dc);
 	SelectObject(H1, map);
 	BitBlt(dc, xUp, yUp, width, height, H1, 0, 0, SRCCOPY);
+	DeleteObject(map);
+	ReleaseDC(hwnd, H1); DeleteObject(H1);
+	ReleaseDC(hwnd, hdc); DeleteObject(hdc);
+	ReleaseDC(hwnd, dc); DeleteObject(dc);
 	EndPaint(hwnd, &ps);
 }
 const int outbreakTrackX[9] = { 57,96,57,96,57,96,57,96,57 };
@@ -527,9 +534,15 @@ const int infectRateY[8] = { 140,155,160,165,159,154,141 };
 #define setPenAndBrush(i,r,g,b) pen[i] = CreatePen(PS_SOLID, 1, RGB(r,g,b)); brush[i] = CreateSolidBrush(RGB(r,g,b));
 #define selobj(i) SelectObject(hdc,pen[i]);SelectObject(hdc,brush[i]);
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
+	FILE* f = fopen("a.txt", "a");
+	fprintf(f,"+wndproc\n");
+	fclose(f);
 	HDC hdc;
 	switch (message){
 	case WM_CREATE:
+		f = fopen("a.txt", "a");
+		fprintf(f, "-crt:wndproc\n");
+		fclose(f);
 		return 0;
 	case WM_PAINT:
 		wchar_t c[40];
@@ -571,17 +584,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam){
 			if(1||i%6==0)
 				cities[i].redraw();
 		isRedrawed = true;
+		f = fopen("a.txt", "a");
+		fprintf(f, "-pnt:wndproc\n");
+		fclose(f);
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		f = fopen("a.txt", "a");
+		fprintf(f, "-dsty:wndproc\n");
+		fclose(f);
 		return 0;
 	case WM_LBUTTONDOWN:
 		int mouse_x = (int)LOWORD(lParam);
 		int mouse_y = (int)HIWORD(lParam);
 		isMouseTouched = 1; latestX = mouse_x; latestY = mouse_y; wchar_t a[200];
-		wsprintf(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
+		//wsprintf(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
+		f = fopen("a.txt", "a");
+		fprintf(f, "-bt:wndproc\n");
+		fclose(f);
 		return 0;
 	}
+	f = fopen("a.txt", "a");
+	fprintf(f, "-nm:wndproc\n");
+	fclose(f);
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
@@ -598,6 +623,9 @@ void City::init() {
 #include "cityinit.txt"
 }
 void City::redraw() {
+	FILE* f = fopen("a.txt", "a");
+	fputs( "city::redraw",f);
+	fclose(f);
 	wchar_t str[20];
 	HDC hdc = GetDC(hwnd);
 	HPEN pen[4]; HBRUSH brush[4];
@@ -657,6 +685,9 @@ Player::Player(int n) {
 }
 
 void Player::drawCards() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::drawcards", f);
+	fclose(f);
 	wchar_t nm[100];
 	for (int i = 0; i < 7; i++) {
 		if (handCards[i].cardType == 0) {
@@ -672,14 +703,23 @@ void Player::drawCards() {
 	return;
 }
 int getClickOfCardPlc() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("getclickofcardplc", f);
+	fclose(f);
 	if (latestX < 1200 || latestX>1440 || latestY > 600)
 		return 7;
 	return (latestY / 150) * 2 + (latestX > 1320);
 }
 bool City::operator== (City c) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city==", f);
+	fclose(f);
 	return num == c.num;
 }
 int City::getNextCity(int nowCity)const{
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::getnextcity", f);
+	fclose(f);
 	if (nowCity == num) {
 		nowin = 0;
 		return neighbor[0];
@@ -691,6 +731,9 @@ int City::getNextCity(int nowCity)const{
 	return neighbor[nowin];
 }
 bool City::isNeighbor(const City& c)const {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::isneighbor", f);
+	fclose(f);
 	int t = c.num;
 	while (t = c.getNextCity(t)) {
 		if (cities[t] == *this)return true;
@@ -698,6 +741,9 @@ bool City::isNeighbor(const City& c)const {
 	return false;
 }
 bool checkRemove(int col) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::checkrm", f);
+	fclose(f);
 	for (int i = 1; i <= 48; i++)
 		for (int j = 0; j < 3; j++)
 			if (cities[i].hasVirus[j] && cities[i].colVirus[j] == col)
@@ -705,6 +751,9 @@ bool checkRemove(int col) {
 	return true;
 }
 void City::addVirus(int col) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::+v", f);
+	fclose(f);
 	if (col == -1)
 		col = color;
 	if (colors[col].cureStatus == 2)return;
@@ -722,14 +771,20 @@ void City::addVirus(int col) {
 		outbreakTrack = 8;
 }
 int City::outbreak(int col) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::outbreak", f);
+	fclose(f);
 	if (hasOutbreak)return 0;
 	int t = this->num;
 	while (t = getNextCity(t)) {
-		cities[t].addVirus(t);
+		cities[t].addVirus();
 	}
 	return 1;
 }
 bool City::subVirus() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::-v", f);
+	fclose(f);
 	bool res = false;
 	if (colors[color].cureStatus == 1) {
 		for (int i = 0; i < 3; i++) {
@@ -748,14 +803,23 @@ bool City::subVirus() {
 	return false;
 }
 void City::clearOutbreakStatus() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::-outbreak status", f);
+	fclose(f);
 	for (int i = 1; i <= 48; i++)
 		cities[i].hasOutbreak = false;
 }
 bool City::isClickNear(int clickX, int clickY) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::isclicknear", f);
+	fclose(f);
 	//wchar_t info[20]; wsprintf(info, "%d %d %d %d", clickX, clickY, cx, cy);MessageBox(hwnd, info, "abc", 0);
 	return clickX <= cx + 20 && clickY <= cy + 20 && clickX >= cx - 20 && clickY >= cy - 20;
 }
 void City::showInformation() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::showinf", f);
+	fclose(f);
 	wchar_t info[200], title[20]; int nvirus = 0+hasVirus[0] + hasVirus[1] + hasVirus[2],
 		nplayer=0+isPeopleHere[0]+isPeopleHere[1]+isPeopleHere[2]+isPeopleHere[3];
 	wsprintf(info, L"%s是个%s色城市，%s研究所\n有%d个病毒，%d人在此", chineseName, colors[color].chineseName, hasResearch ? L"有" : L"无",nvirus, nplayer);
@@ -763,12 +827,18 @@ void City::showInformation() {
 	MessageBox(hwnd, info, title, 0);
 }
 bool City::confirmSelection(const wchar_t* thingToDo) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("city::confirmsel", f);
+	fclose(f);
 	wchar_t info[200], title[20];
 	wsprintf(info, L"你确定要对%s执行%s操作吗？", chineseName, thingToDo);
 	wsprintf(title, L"%s操作确认", thingToDo);
 	return MessageBox(hwnd, info, title, MB_YESNO | MB_ICONQUESTION) == IDYES;
 }
 void showUsedHC() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("showusedhc", f);
+	fclose(f);
 	wchar_t info[1000] = L"已经弃掉的手牌有：\n"; int t = 0;
 	for (auto it : usedHandCards) {
 		if (it.cardType == 0)
@@ -783,6 +853,9 @@ void showUsedHC() {
 	MessageBox(hwnd, info, L"已经弃掉的手牌信息", 0);
 }
 void showUsedVC() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("showusedvc", f);
+	fclose(f);
 	wchar_t info[1000] = L"已经弃掉的病毒牌有：\n"; int t = 0;
 	for (auto it : usedVirusCards) {
 		wcscat(info, cities[it.nCitynum].chineseName);
@@ -792,6 +865,9 @@ void showUsedVC() {
 	MessageBox(hwnd, info, L"已经弃掉的病毒牌信息", 0);
 }
 void Player::discardCard(HandCard& h,bool toused) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::discardcard", f);
+	fclose(f);
 	for (int i = 0; i < 7; i++) {
 		if (handCards[i] == h) {
 			if (toused)
@@ -804,45 +880,72 @@ void Player::discardCard(HandCard& h,bool toused) {
 	}
 }
 void Player::buildResearch(HandCard& h){
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::+research", f);
+	fclose(f);
 	cities[nowCity].hasResearch = true;
 	numOfResearch++;
 	discardCard(h,1);
 	remainMove--;
 }
 void Actor::buildResearch(HandCard& h) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("actor::+research", f);
+	fclose(f);
 	cities[nowCity].hasResearch = true;
 	numOfResearch++;
 	remainMove--;
 }
 void Player::drive(int c) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::drive", f);
+	fclose(f);
 	cities[nowCity].isPeopleHere[num] = false;
 	nowCity = c;
 	cities[nowCity].isPeopleHere[num] = true;
 	remainMove--;
 }
 void Player::directFlight(HandCard& h) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::directto", f);
+	fclose(f);
 	drive(h.nCityNum);
 	discardCard(h,1);
 }
 void Player::charterFlight(HandCard& h, int to) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::charterto", f);
+	fclose(f);
 	drive(to);
 	discardCard(h,1);
 }
 void Player::shuttleFlight(int cWithResearch) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::shuttleto", f);
+	fclose(f);
 	drive(cWithResearch);
 }
 bool Player::treatDisease(){
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::treat", f);
+	fclose(f);
 	bool ret;
 	remainMove -= ret = cities[nowCity].subVirus();
 	return ret;
 }
 bool Medic::treatDisease() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("medic::treat", f);
+	fclose(f);
 	bool t = cities[nowCity].subVirus() | cities[nowCity].subVirus() | cities[nowCity].subVirus();
 	if (colors[cities[nowCity].color].cureStatus == 0)
 		remainMove -= t;
 	return t;
 }
 void Player::addCard(HandCard h) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::addcard", f);
+	fclose(f);
 	if(h.cardType==0)
 		MessageBox(hwnd, cities[h.nCityNum].chineseName, L"摸到了：", 0);
 	if (h.cardType == 1)
@@ -862,6 +965,9 @@ void Player::addCard(HandCard h) {
 		}
 }
 void Player::deliverCard(HandCard h, Player* p, bool isGive){
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::delivercard", f);
+	fclose(f);
 	if (isGive) {
 		discardCard(h,0);
 		p->addCard(h);
@@ -872,9 +978,15 @@ void Player::deliverCard(HandCard h, Player* p, bool isGive){
 	}
 }
 void Player::removeResearch() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::-research", f);
+	fclose(f);
 	cities[nowCity].hasResearch = false;
 }
 void Player::infectVirus() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::infectv", f);
+	fclose(f);
 	wchar_t info[200]=L"在";
 	for (int i = 0; i < cardNumByRate[infectRate]; i++) {
 		auto t = toUseVirusCards.back(); //MessageBox(hwnd, cities[t.nCitynum].chineseName, L"a", 0);
@@ -888,6 +1000,9 @@ void Player::infectVirus() {
 	MessageBox(hwnd, info, L"传播", 0);
 }
 void Player::touchCards() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::touchcard", f);
+	fclose(f);
 	for (int i = 0; i < 2; i++) {
 		auto t = toUseHandCards.back();
 		if (t.cardType == 2) {
@@ -903,6 +1018,9 @@ void Player::touchCards() {
 	}
 }
 bool Player::discoverCure(HandCard* h) {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::discovercure", f);
+	fclose(f);
 	int co = cities[h->nCityNum].color;
 	for (int i = 0; i < cardToCure; i++) {
 		if (h[i].cardType != 0 || cities[h[i].nCityNum].color != co)
@@ -917,6 +1035,9 @@ bool Player::discoverCure(HandCard* h) {
 	return true;
 }
 void epidemic() {
+	FILE* f = fopen("a.txt", "a");
+	fputs("player::epidemic", f);
+	fclose(f);
 	infectRate++;
 	MessageBox(hwnd, cities[toUseVirusCards[0].nCitynum].chineseName, L"要增加三个病毒的位置：", 0);
 	for (int i = 0; i < 3; i++)cities[toUseVirusCards[0].nCitynum].addVirus();
