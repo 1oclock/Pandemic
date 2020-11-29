@@ -1249,7 +1249,8 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 				}
 				MessageBox(hwnd, L"点的地方不对，请重新选择", L"空运特别事件牌", MB_ICONEXCLAMATION);
 			}
-			p->specialEvent(u, 0, players[toplr], i);
+			if(flag)
+			    p->specialEvent(u, 0, players[toplr], i);
 		}
 	}
 	else if (u.nCityNum == 1) {
@@ -1271,7 +1272,8 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 			}
 			MessageBox(hwnd, L"点的地方不对，请重新选择", L"人口迅速恢复特别事件牌", MB_ICONEXCLAMATION);
 		}
-		p->specialEvent(u, 1, i);
+		if(flag)
+		    p->specialEvent(u, 1, i);
 	}
 	else if (u.nCityNum == 3) {
 		MessageBox(hwnd, L"请点击城市选择要建立的研究所，取消退出", L"政府拨款特别事件牌", 0);
@@ -1291,7 +1293,8 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 			}
 			MessageBox(hwnd, L"点的地方不对，请重新选择", L"政府拨款特别事件牌", MB_ICONEXCLAMATION);
 		}
-		p->specialEvent(u, 3, i);
+		if(flag)
+		    p->specialEvent(u, 3, i);
 	}
 	else if (u.nCityNum == 4) {
 		flag2 = false;
