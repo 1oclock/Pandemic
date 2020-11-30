@@ -32,9 +32,11 @@ HWND hwnd;
 int outbreakTrack = 0;
 int infectRate = 0;
 int numOfResearch = 0;
-int totalPlayer = 4;
+int totalPlayer = 4; int difficulty = 4; int chosen[4] = { 3,3,3,3 };
 int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
+#define IN_GAME_STATUS 1
+#define CHOOSING_PRESON_STATUS 2
 bool isMouseTouched, isRedrawed; int latestX, latestY; int nowPlayer = 0;
 
 typedef struct _Color {
@@ -175,15 +177,12 @@ const wchar_t* eventExplanation[] = { L"把随便一个玩家（包括自己）�
 L"改变牌堆上6张牌的顺序",L"在任意位置建立研究所",L"跳过即将进行的传染疾病阶段" };
 const wchar_t* eventOperationDirection[] = { L"点击玩家，再点击城市",L"点击城市，将自动移除",L"在手牌区显示，点击一个牌将其放到第一个",
 L"点击城市，将自动建立",L"直接点击确定，将生效" };
+std::map<char, const wchar_t*> nameOfPlayer, skillOfPlayer;
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
 	srand(time(0));
 #include "colorinit.txt"
 	City::init();
-	players[0] = new SkilllessPlayer(0); cities[2].isPeopleHere[0] = true;
-	players[1] = new SkilllessPlayer(1); cities[2].isPeopleHere[1] = true;
-	players[2] = new SkilllessPlayer(2); cities[2].isPeopleHere[2] = true;
-	players[3] = new SkilllessPlayer(3); cities[2].isPeopleHere[3] = true;
-	std::map<char, const wchar_t*> nameOfPlayer, skillOfPlayer;	nameOfPlayer['n'] = L"无技能者"; skillOfPlayer['n'] = L"null";
+	nameOfPlayer['n'] = L"无技能者"; skillOfPlayer['n'] = L"null";
 	nameOfPlayer['a'] = L"行动专家"; skillOfPlayer['a'] = L"建立研究所时无需打出牌（仍然需要行动）";
 	nameOfPlayer['d'] = L"调度员"; skillOfPlayer['d'] = L"你可以移动别人的棋子，就像自己的一样；还可以把别的棋子移动到有棋子的地方\n\
 具体来说，你可以对别人执行前四个行动，用自己的手牌\n以上操作都需要一个行动";
@@ -197,7 +196,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		toUseHandCards.emplace_back(1, i);
 	std::random_shuffle(toUseVirusCards.begin(), toUseVirusCards.end());
 	std::random_shuffle(toUseHandCards.begin(), toUseHandCards.end());
-	int difficulty = 4;
 	WNDCLASS wndclass;
 	MSG msg;
 	wndclass.cbClsExtra = 0; wndclass.cbWndExtra = 0;
@@ -217,14 +215,55 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	SetWindowLong(hwnd, GWL_STYLE, dwStyle);//*/
 	ShowWindow(hwnd, iCmdShow);
 	UpdateWindow(hwnd);
-	int sz = (int)toUseHandCards.size() - 15;
+	status = CHOOSING_PRESON_STATUS;
+	while (1) {
+		WAIT_UNTIL_MOUSE_INPUT;
+		int i, j;
+		for (i = 2; i <= 4; i++)
+			if (isin(i * 100 - 40, i * 100 + 40, 90, 130))
+				totalPlayer = i;
+		for (i = 4; i <= 6; i++)
+			if (isin(i * 100 - 240, i * 100 - 160, 190, 230))
+				difficulty = i;
+		for (i = 0; i < totalPlayer; i++)
+			for (j = 0; j < 6; j++)
+				if (isin(j * 100 + 160, j * 100 + 240, 290 + i * 100, 330 + i * 100))
+					chosen[i] = j;
+		if (isin(540, 600, 100, 130))
+			MessageBox(hwnd, L"可以选择2人游戏，3人游戏，4人游戏\nx人游戏初始手牌每人6-x张\n无论是几个人玩，你们轮流坐在电脑前，到自己回合了操作\n\
+也可以一个人掌控多个角色\n颜色唯一区别角色，按照顺序分别为白绿浅红浅蓝，与选择的角色无关\n屏幕右下角是从左到右从当前回合到下一个再下一个的顺序。", L"人数帮助", 0);
+		if (isin(540, 600, 200, 235))
+			MessageBox(hwnd, L"难度是蔓延牌的数量。\n4张是简单，适合初学者\n5张是中等，适合比较熟悉的\n6张是困难，只适合愿意挑战自己的人", L"难度帮助", 0);
+		if (isin(800, 1100, 100, 700)) {
+			int t = (latestX - 800) / 150 + (latestY - 100) / 200 * 2; char mk[] = "admnrs";
+			wchar_t u[200];
+			wsprintf(u, L"人物名称：%s\n技能：%s\n%s", nameOfPlayer[mk[t]], skillOfPlayer[mk[t]], t == 3 ? L"无技能者难以发挥必要的作用，适合高水平人挑战自己" : L"");
+			MessageBox(hwnd, u, L"人物技能介绍", 0);
+		}
+		if (isin(193, 297, 685, 744))break;
+		if (isin(344, 438, 683, 735))throw -1;
+		WAIT_UNTIL_REDRAW;
+	}
+	for (int i = 0; i < totalPlayer; i++) {
+		switch (chosen[i]) {
+		case 0:players[i] = new Actor(i);			break;
+		case 1:players[i] = new Dispatcher(i);		break;
+		case 2:players[i] = new Medic(i);			break;
+		case 3:players[i] = new SkilllessPlayer(i); break;
+		case 4:players[i] = new Researcher(i);		break;
+		case 5:players[i] = new Scientist(i);		break;
+		}
+		cities[2].isPeopleHere[i] = true;
+	}
+	status = IN_GAME_STATUS;
+	int sz = (int)toUseHandCards.size() - 8;
 	for (int i = 0; i < difficulty; i++) {
 		int t = rand() % (sz / difficulty) + (sz / difficulty + 1) * (i);
 		toUseHandCards.insert(toUseHandCards.begin() + t, _HandCard(2, 0));
 	}
 	cities[2].hasResearch = true;
 	nowPlayer = 0; bool flag = false, flag1 = false, flag2 = true; wchar_t info[100];
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < totalPlayer; i++)
 		players[i]->gameStartOperations();
 	WAIT_UNTIL_REDRAW;
 	try {
@@ -492,7 +531,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 							}
 							if (flag1) {
 								if (cities[players[nowPlayer]->nowCity].confirmSelection(L"收到本地牌")) {
-									players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[j], players[toPeople], 1);
+									players[nowPlayer]->deliverCard(players[toPeople]->handCards[j], players[toPeople], 0);
 								}
 							}
 							else
@@ -534,15 +573,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 					}
 				}
 				else if (isin(1200, 1200 + 20 * totalPlayer, 700, 720)) {
-					int t = ((latestX - 1200) / 20 + nowPlayer) % totalPlayer + 1, i;
+					int t = ((latestX - 1200) / 20 + nowPlayer) % totalPlayer, i;
 					wchar_t pp[300], tt[30];
-					wsprintf(tt, L"玩家%d的信息", t);
-					wsprintf(pp, L"名称：%s\n技能：%s\n手牌：", nameOfPlayer[players[t]->playerType], skillOfPlayer[players[t]->playerType]);
-					for (i = 0; i < 7 && players[t]->handCards[i].cardType != -1; i++)
+					wsprintf(tt, L"玩家%d的信息", t + 1);
+					wsprintf(pp, L"名称：%s\n技能：%s\n手牌：\n", nameOfPlayer[players[t]->playerType], skillOfPlayer[players[t]->playerType]);
+					for (i = 0; i < 7 && players[t]->handCards[i].cardType != -1; i++) {
 						wcscat(pp, players[t]->handCards[i].cardType ?
 							eventC[players[t]->handCards[i].nCityNum] :
-							cities[players[t]->handCards[i].nCityNum].chineseName),
+							cities[players[t]->handCards[i].nCityNum].chineseName);
+						wcscat(pp, L" ");
+						wcscat(pp, colors[cities[players[t]->handCards[i].nCityNum].color].chineseName);
 						wcscat(pp, L"\n");
+					}
 					if (players[nowPlayer]->playerType != 'd') {
 						wcscat(pp, L"点是使用他的特殊技能牌，点否退出");
 						if (MessageBox(hwnd, pp, tt, MB_YESNO | MB_ICONQUESTION) == IDYES) {
@@ -661,52 +703,78 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		fclose(f);*/
 		return 0;
 	case WM_PAINT:
-		wchar_t c[40];
-		checkRemove();
-		drawBitmap(L"Pictures/white.bmp", 1500, 1000, 0, 0);
-		drawBitmap(L"Pictures/main_background.bmp", 1200, 700, 0, 0);
-		drawBitmap(L"Pictures/hback.bmp", 128, 152, 715, 535);
-		wsprintf(c, L"剩余手牌数：%d", toUseHandCards.size());
-		outputText(730, 600, c, true);
-		drawBitmap(L"Pictures/movements.bmp", 1117, 55, 0, 701);
-		for (int i = 0; i < 4; i++) {
-			drawShape(CIRCLE, 1200 + i * 20, 700, 1220 + i * 20, 720, cols[(i + nowPlayer) % totalPlayer], (i + nowPlayer) % totalPlayer == 0);
+		if (status == CHOOSING_PRESON_STATUS) {
+			drawBitmap(L"Pictures/initial.bmp", 1300, 800, 0, 0); int i; wchar_t u[20];
+			for (i = 2; i <= 4; i++)
+				drawShape(RECTANGLE, i * 100 - 40, 90, i * 100 + 40, 130, i == totalPlayer ? RGB(64, 64, 64) : RGB(192, 192, 192), false), 
+				wsprintf(u, L"%d个", i), outputText(100 * i - 40, 100, u, true);
+			for (i = 4; i <= 6; i++)
+				drawShape(RECTANGLE, i * 100 - 240, 190,  i * 100 - 160, 230, i == difficulty ? RGB(64, 64, 64) : RGB(192, 192, 192), false),
+				wsprintf(u, L"%d", i), outputText(100 * i - 240, 200, u, true);
+			drawShape(RECTANGLE, 0, 270 + 100 * totalPlayer, 100, 700, RGB(255, 255, 255), false);
+			drawBitmap(L"Pictures/Player/actor.bmp", 150, 200, 800, 100);
+			drawBitmap(L"Pictures/Player/dispatcher.bmp", 150, 200, 950, 100);
+			drawBitmap(L"Pictures/Player/medic.bmp", 150, 200, 800, 300);
+			drawBitmap(L"Pictures/Player/researcher.bmp", 150, 200, 800, 500);
+			drawBitmap(L"Pictures/Player/scientist.bmp", 150, 200, 950, 500);
+			for (i = 0; i < totalPlayer; i++) {
+				auto x = nameOfPlayer.begin();
+				for (int j = 0; j < 6; j++) {
+					drawShape(RECTANGLE,  j * 100 + 160, 300 + i * 100 - 10,  j * 100 + 240, 300 + i * 100 + 30,
+						j == chosen[i] ? RGB(64, 64, 64) : RGB(192, 192, 192), false);
+					outputText( j * 100 + 160, 300 + i * 100, x->second, true);
+					++x;
+				}
+			}
 		}
-		if (usedHandCards.size()) {
-			auto t = *usedHandCards.rbegin();
-			if (t.cardType == 0)
-				wsprintf(c, L"Pictures/cities/city%d/h.bmp", (t).nCityNum);
-			else if (t.cardType == 1)
-				wsprintf(c, L"Pictures/Event/%s.bmp", event[t.nCityNum]);
+		if (status == IN_GAME_STATUS) {
+			wchar_t c[40];
+			checkRemove();
+			drawBitmap(L"Pictures/white.bmp", 1500, 1000, 0, 0);
+			drawBitmap(L"Pictures/main_background.bmp", 1200, 700, 0, 0);
+			drawBitmap(L"Pictures/hback.bmp", 128, 152, 715, 535);
+			wsprintf(c, L"剩余手牌数：%d", toUseHandCards.size());
+			outputText(730, 600, c, true);
+			drawBitmap(L"Pictures/movements.bmp", 1117, 55, 0, 701);
+			for (int i = 0; i < totalPlayer; i++) {
+				drawShape(CIRCLE, 1200 + i * 20, 700, 1220 + i * 20, 720, cols[(i + nowPlayer) % totalPlayer], (i + nowPlayer) % totalPlayer == 0);
+			}
+			if (usedHandCards.size()) {
+				auto t = *usedHandCards.rbegin();
+				if (t.cardType == 0)
+					wsprintf(c, L"Pictures/cities/city%d/h.bmp", (t).nCityNum);
+				else if (t.cardType == 1)
+					wsprintf(c, L"Pictures/Event/%s.bmp", event[t.nCityNum]);
+				else
+					wsprintf(c, L"Pictures/epidemic.bmp");
+				drawBitmap(c, 128, 152, 879, 535);
+			}
+			drawBitmap(L"Pictures/vback.bmp", 200, 110, 684, 22);
+			wsprintf(c, L"剩余病毒牌数：%d", toUseVirusCards.size());
+			outputText(700, 30, c, true);
+			if (usedVirusCards.size()) {
+				wsprintf(c, L"Pictures/cities/city%d/v.bmp", (*usedVirusCards.rbegin()).nCitynum);
+				drawBitmap(c, 200, 110, 870, 22);
+			}
+			if (outbreakTrack == 0)
+				drawBitmap(L"Pictures/O0.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
+			else if (outbreakTrack % 2)
+				drawBitmap(L"Pictures/O1.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
 			else
-				wsprintf(c, L"Pictures/epidemic.bmp");
-			drawBitmap(c, 128, 152, 879, 535);
+				drawBitmap(L"Pictures/O2.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
+			drawBitmap(L"Pictures/infRate.bmp", 42, 37, infectRateX[infectRate], infectRateY[infectRate]);
+			players[nowPlayer]->drawCards();
+			for (int i = 0; i < 4; i++) {
+				wchar_t nm[30]; swprintf_s(nm, L"Pictures/cureEff/%c%d.bmp", colors[i].englishName, colors[i].cureStatus);
+				wsprintf(c, L"剩%d病毒", colors[i].virusRemain);
+				outputText(345 + 85 * i, 680, c, true);
+				//MessageBox(hwnd, nm, L"abc", 0);
+				drawBitmap(nm, 40, 40, 355 + 85 * i, 642 - (colors[i].cureStatus != 0) * 42);
+			}
+			for (int i = 1; i <= 48; i++)
+				if (1 || i % 6 == 0)
+					cities[i].redraw();
 		}
-		drawBitmap(L"Pictures/vback.bmp", 200, 110, 684, 22);
-		wsprintf(c, L"剩余病毒牌数：%d", toUseVirusCards.size());
-		outputText(700, 30, c, true);
-		if (usedVirusCards.size()) {
-			wsprintf(c, L"Pictures/cities/city%d/v.bmp", (*usedVirusCards.rbegin()).nCitynum);
-			drawBitmap(c, 200, 110, 870, 22);
-		}
-		if (outbreakTrack == 0)
-			drawBitmap(L"Pictures/O0.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
-		else if (outbreakTrack % 2)
-			drawBitmap(L"Pictures/O1.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
-		else
-			drawBitmap(L"Pictures/O2.bmp", 44, 40, outbreakTrackX[outbreakTrack], outbreakTrackY[outbreakTrack]);
-		drawBitmap(L"Pictures/infRate.bmp", 42, 37, infectRateX[infectRate], infectRateY[infectRate]);
-		players[nowPlayer]->drawCards();
-		for (int i = 0; i < 4; i++) {
-			wchar_t nm[30]; swprintf_s(nm, L"Pictures/cureEff/%c%d.bmp", colors[i].englishName, colors[i].cureStatus);
-			wsprintf(c, L"剩%d病毒", colors[i].virusRemain);
-			outputText(345 + 85 * i, 680, c, true);
-			//MessageBox(hwnd, nm, L"abc", 0);
-			drawBitmap(nm, 40, 40, 355 + 85 * i, 642 - (colors[i].cureStatus != 0) * 42);
-		}
-		for (int i = 1; i <= 48; i++)
-			if (1 || i % 6 == 0)
-				cities[i].redraw();
 		isRedrawed = true;
 		/*f = fopen("a.txt", "a");
 		fprintf(f, "-pnt:wndproc\n");
@@ -723,7 +791,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		int mouse_x = (int)LOWORD(lParam);
 		int mouse_y = (int)HIWORD(lParam);
 		isMouseTouched = 1; latestX = mouse_x; latestY = mouse_y;
-		//wsprintf(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
+		//wchar_t a[20];wsprintf(a, L"pos:%d %d", mouse_x, mouse_y), MessageBox(hwnd,a, L"abc", 0);
 		/*f = fopen("a.txt", "a");
 		fprintf(f, "-bt:wndproc\n");
 		fclose(f);*/
@@ -1231,7 +1299,7 @@ void Player::gameStartOperations() {
 		h = toUseHandCards.back(); toUseHandCards.pop_back();
 		this->handCards[i] = h;
 	}
-	wsprintf(uu, L"玩家%d完成了初始摸牌", num);
+	wsprintf(uu, L"玩家%d完成了初始摸牌", num+1);
 	MessageBox(hwnd, uu, L"初始操作", 0);
 }
 void epidemic() {
