@@ -36,7 +36,7 @@ int totalPlayer = 4; int difficulty = 4; int chosen[4] = { 3,3,3,3 };
 int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
 #define IN_GAME_STATUS 1
-#define CHOOSING_PRESON_STATUS 2
+#define CHOOSING_PERSON_STATUS 2
 bool isMouseTouched, isRedrawed; int latestX, latestY; int nowPlayer = 0;
 
 typedef struct _Color {
@@ -72,11 +72,12 @@ void outputText(int x, int y, const wchar_t* text, bool transparent = 0);
 void drawShape(const int type, int x, int y, int x1, int y1, COLORREF color, bool hasout);
 void drawShape(const int type, POINT* ps, COLORREF color);
 class City {
+protected:
+	bool hasVirus[3];
+	int colVirus[3];
 private:
 	int neighbor[10];
 	bool operator==(City c);
-	bool hasVirus[3];
-	int colVirus[3];
 	bool hasOutbreak;
 	int cx, cy;
 	mutable int nowin;
@@ -168,6 +169,22 @@ public:
 	Scientist(int n) :Player(n) { playerType = 's'; cardToCure = 4; }//only need to override constructor to change cardToCure to 4
 };
 
+class Saves :private City {//全部在D:/PandemicSaves搞
+private:
+	bool usedSaveNames[26];
+	char charSaveNames[26];
+	void resetCharNames();
+public:
+	Saves();
+	char getLastUsableChar();
+	void saveNowStatus(char t);
+	void readFromFile(char t);
+	void deleteSave(char t);
+	void showSaveInfo(char t);
+	void getSpecialInfo(char t, wchar_t* in);
+};
+
+
 void drawBitmap(const wchar_t* fileName, int width, int height, int xUp, int yUp);
 void executeSpecialEvent(HandCard u, Player* p, bool& flag2);
 
@@ -179,7 +196,7 @@ const wchar_t* eventOperationDirection[] = { L"点击玩家，再点击城市",L
 L"点击城市，将自动建立",L"直接点击确定，将生效" };
 std::map<char, const wchar_t*> nameOfPlayer, skillOfPlayer;
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
-	srand(time(0));
+	srand(time(0)); Saves saves;
 #include "colorinit.txt"
 	City::init();
 	nameOfPlayer['n'] = L"无技能者"; skillOfPlayer['n'] = L"null";
@@ -215,7 +232,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	SetWindowLong(hwnd, GWL_STYLE, dwStyle);//*/
 	ShowWindow(hwnd, iCmdShow);
 	UpdateWindow(hwnd);
-	status = CHOOSING_PRESON_STATUS;
+	status = CHOOSING_PERSON_STATUS;
+	bool isSelectedSaves = false;
 	while (1) {
 		WAIT_UNTIL_MOUSE_INPUT;
 		int i, j;
@@ -242,29 +260,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		}
 		if (isin(193, 297, 685, 744))break;
 		if (isin(344, 438, 683, 735))throw -1;
+		if (isin(0, 100, 0, 50)) {
+			isSelectedSaves = 1; break;
+		}
 		WAIT_UNTIL_REDRAW;
 	}
-	for (int i = 0; i < totalPlayer; i++) {
-		switch (chosen[i]) {
-		case 0:players[i] = new Actor(i);			break;
-		case 1:players[i] = new Dispatcher(i);		break;
-		case 2:players[i] = new Medic(i);			break;
-		case 3:players[i] = new SkilllessPlayer(i); break;
-		case 4:players[i] = new Researcher(i);		break;
-		case 5:players[i] = new Scientist(i);		break;
-		}
-		cities[2].isPeopleHere[i] = true;
-	}
 	status = IN_GAME_STATUS;
-	int sz = (int)toUseHandCards.size() - 8;
-	for (int i = 0; i < difficulty; i++) {
-		int t = rand() % (sz / difficulty) + (sz / difficulty + 1) * (i);
-		toUseHandCards.insert(toUseHandCards.begin() + t, _HandCard(2, 0));
+	bool flag = false, flag1 = false, flag2 = true; wchar_t info[100];
+	if (!isSelectedSaves) {
+		for (int i = 0; i < totalPlayer; i++) {
+			switch (chosen[i]) {
+			case 0:players[i] = new Actor(i);			break;
+			case 1:players[i] = new Dispatcher(i);		break;
+			case 2:players[i] = new Medic(i);			break;
+			case 3:players[i] = new SkilllessPlayer(i); break;
+			case 4:players[i] = new Researcher(i);		break;
+			case 5:players[i] = new Scientist(i);		break;
+			}
+			cities[2].isPeopleHere[i] = true;
+		}
+		int sz = (int)toUseHandCards.size() - 8;
+		for (int i = 0; i < difficulty; i++) {
+			int t = rand() % (sz / difficulty) + (sz / difficulty + 1) * (i);
+			toUseHandCards.insert(toUseHandCards.begin() + t, _HandCard(2, 0));
+		}
+		cities[2].hasResearch = true;
+		nowPlayer = 0; 
+		for (int i = 0; i < totalPlayer; i++)
+			players[i]->gameStartOperations();
 	}
-	cities[2].hasResearch = true;
-	nowPlayer = 0; bool flag = false, flag1 = false, flag2 = true; wchar_t info[100];
-	for (int i = 0; i < totalPlayer; i++)
-		players[i]->gameStartOperations();
+	else
+		saves.readFromFile('b');
 	WAIT_UNTIL_REDRAW;
 	try {
 		while (1) {
@@ -274,6 +300,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 				uu[2] = L'0' + players[nowPlayer]->remainMove;
 				outputText(1050, 730, uu);
 				WAIT_UNTIL_MOUSE_INPUT; //wsprintf(info, L"%d %d", latestX, latestY); MessageBox(hwnd, info, info, 0);
+				if (isin(0, 100, 0, 100)) {
+					saves.saveNowStatus('b');
+				}
 				if (isin(16, 60, 717, 749)) {
 					//drive
 					MessageBox(hwnd, L"请点击你想要去的城市来驾车去\n如果后悔了，点击取消", L"坐车", 0);
@@ -490,6 +519,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 										if (players[nowPlayer]->handCards[togivec].cardType == 0) {
 											if (cities[players[nowPlayer]->handCards[togivec].nCityNum].confirmSelection(L"给牌")) {
 												players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[togivec], players[toPeople], 1);
+												players[nowPlayer]->remainMove--;
 												break;
 											}
 										}
@@ -497,6 +527,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 											wchar_t u[200]; wsprintf(u, L"你确定要把特别行动牌%s给出吗？", eventC[players[nowPlayer]->handCards[togivec].nCityNum]);
 											if (MessageBox(hwnd, u, L"给牌操作确认", MB_YESNO | MB_ICONQUESTION) == IDYES) {
 												players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[togivec], players[toPeople], 1);
+												players[nowPlayer]->remainMove--;
 												break;
 											}
 										}
@@ -516,6 +547,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 								if (flag1) {
 									if (cities[players[nowPlayer]->nowCity].confirmSelection(L"给出本地牌")) {
 										players[nowPlayer]->deliverCard(players[nowPlayer]->handCards[j], players[toPeople], 1);
+										players[nowPlayer]->remainMove--;
 									}
 								}
 								else
@@ -582,7 +614,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 							eventC[players[t]->handCards[i].nCityNum] :
 							cities[players[t]->handCards[i].nCityNum].chineseName);
 						wcscat(pp, L" ");
-						wcscat(pp, colors[cities[players[t]->handCards[i].nCityNum].color].chineseName);
+						wcscat(pp, players[t]->handCards[i].cardType ? 
+							L"特别事件牌" : 
+							colors[cities[players[t]->handCards[i].nCityNum].color].chineseName);;
 						wcscat(pp, L"\n");
 					}
 					if (players[nowPlayer]->playerType != 'd') {
@@ -590,7 +624,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 						if (MessageBox(hwnd, pp, tt, MB_YESNO | MB_ICONQUESTION) == IDYES) {
 							for (int i = 0; i < 7 && players[t]->handCards[i].cardType != -1; i++)
 								if (players[t]->handCards[i].cardType == 1) {
-									set0(pp); wsprintf(pp, L"你确定要使用特殊事件牌%s吗", eventC[players[t]->handCards[i].nCityNum]);
+									set0(pp); wsprintf(pp, L"你确定要使用特殊事件牌%s吗？\n用处：%s\n用法：%s", eventC[players[t]->handCards[i].nCityNum], 
+										eventExplanation[players[t]->handCards[i].nCityNum], eventOperationDirection[players[t]->handCards[i].nCityNum]);
 									if (MessageBox(hwnd, pp, L"使用别人的特殊事件牌", MB_YESNO | MB_ICONQUESTION) == IDYES) {
 										executeSpecialEvent(players[t]->handCards[i], players[t], flag2);
 										break;
@@ -703,7 +738,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		fclose(f);*/
 		return 0;
 	case WM_PAINT:
-		if (status == CHOOSING_PRESON_STATUS) {
+		if (status == CHOOSING_PERSON_STATUS) {
 			drawBitmap(L"Pictures/initial.bmp", 1300, 800, 0, 0); int i; wchar_t u[20];
 			for (i = 2; i <= 4; i++)
 				drawShape(RECTANGLE, i * 100 - 40, 90, i * 100 + 40, 130, i == totalPlayer ? RGB(64, 64, 64) : RGB(192, 192, 192), false), 
@@ -1352,7 +1387,7 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 				MessageBox(hwnd, L"点的地方不对，请重新选择", L"空运特别事件牌", MB_ICONEXCLAMATION);
 			}
 			if (flag)
-				p->specialEvent(u, 0, players[toplr], i);
+				p->specialEvent(u, 0, players[toplr], i), MessageBox(hwnd, L"成功空运了人", L"空运特别事件牌", 0);
 		}
 	}
 	else if (u.nCityNum == 1) {
@@ -1410,7 +1445,8 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 		MessageBox(hwnd, L"使用预测特殊事件牌：\n系统将把接下来几张手牌（先摸到的在前）的图片放在手牌区，\
 看到后点击任一张牌，他将变成第一个\n例如原来6张牌按照将摸到的顺序123456，你想变成642135，可以依次点击2 4 6\n\
 想变成654321，可以依次点击2 3 4 5 6\n点击取消退出，发现解药确认", L"预测特别事件牌", 0);
-		Player* shower = new SkilllessPlayer(4); bool qx = false; int t, i, j, uyxu[] = { 1,2,3,4,5,6 };//uyxu:顺序
+		Player* shower = new SkilllessPlayer(4); bool qx = false; int t, i, j; 
+		int uyxu[] = { 1,2,3,4,5,6 };//uyxu:顺序
 		wchar_t x[200];
 		HandCard tog[6];
 		for (i = 0; i < 6; i++)
@@ -1493,5 +1529,187 @@ void checkRemove() {
 	}
 	if (flag1)
 		throw 1;
+}
+
+char Saves::getLastUsableChar(){
+	for (int i = 0; i < 26; i++)
+		if (!usedSaveNames[i])
+			return 'a' + i;
+	return '0';
+}
+void Saves::resetCharNames(){
+	int cnt = 0;
+	for (int i = 0; i < 26; i++)
+		if (usedSaveNames[i])
+			charSaveNames[cnt++] = i + 'a';
+	charSaveNames[cnt] = 0;
+}
+Saves::Saves() {
+	FILE* f = fopen("D:/PandemicSaves/savenames.txt", "r"); int v;
+	if (f == NULL) {
+		v=_wmkdir(L"D:/PandemicSaves/savenames.txt");
+		fclose(fopen("D:/PandemicSaves/savenames.txt", "w"));
+	}
+	else {
+		set0(usedSaveNames);
+		v=fscanf(f, "%s", charSaveNames);
+		int t = strlen(charSaveNames);
+		for (int i = 0; i < t; i++)usedSaveNames[charSaveNames[i] - 'a'] = true;
+	}
+}
+#define fscanf v=fscanf
+void Saves::saveNowStatus(char t){
+	char a[] = "D:/PandemicSaves/savex.txt"; a[21] = t;
+	wchar_t b[30]; wsprintf(b, L"D:/PandemicSaves/save%c.txt", t);
+	CloseHandle(CreateFile(b, GENERIC_ALL, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+		nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+	FILE* f = fopen(a, "w"); int i, v;
+	fprintf(f, "%d %d %d %d\n", outbreakTrack, infectRate, totalPlayer, nowPlayer);
+	for (i = 0; i < 4; i++)
+		fprintf(f, "%d %d  ", colors[i].cureStatus, colors[i].virusRemain);
+	fprintf(f,"\n\n%d\n", toUseHandCards.size());
+	for (auto it : toUseHandCards)
+		fprintf(f, "%d ", it.nCityNum | it.cardType << 6);
+	fprintf(f, "\n%d\n", usedHandCards.size());
+	for (auto it : usedHandCards)
+		fprintf(f, "%d ", it.nCityNum | it.cardType << 6);
+	fprintf(f, "\n%d\n", toUseVirusCards.size());
+	for (auto it : toUseVirusCards)
+		fprintf(f, "%d ", it.nCitynum);
+	fprintf(f, "\n%d\n", usedVirusCards.size());
+	for (auto it : usedVirusCards)
+		fprintf(f, "%d ", it.nCitynum);
+	fprintf(f, "\n\n");
+	for (i = 1; i <= 48; i++) {
+		Saves* p = (Saves*)&cities[i];
+		int t = p->hasVirus[0]<<0 | p->hasVirus[1] << 1 | hasVirus[2] << 2 | p->colVirus[0] << 3 | p->colVirus[1] << 5 |
+			p->colVirus[2] << 7 | p->hasResearch << 9 | p->isPeopleHere[0] << 10 |
+			p->isPeopleHere[1] << 11 | p->isPeopleHere[2] << 12 | p->isPeopleHere[3] << 13;
+		fprintf(f, "%d ", t);
+	}
+	fprintf(f, "\n\n");
+	for (i = 0; i < 4; i++) {
+		int x = players[i]->playerType - 'a';
+		fprintf(f, "%d %d %d   ", x, players[i]->nowCity, players[i]->remainMove);
+		for (int j = 0; j < 7; j++)
+			fprintf(f, "%d %d  ", players[i]->handCards[j].cardType, players[i]->handCards[j].nCityNum);
+	}
+	fclose(f);
+	MessageBox(hwnd, L"请输入这个存档的补充信息\n将自动打开一个记事本，输入到那个记事本即可\n不要输入太多行或一行太多字，程序可能崩溃",L"保存存档",0);
+	wsprintf(b, L"D:/PandemicSaves/info%c.txt", t);
+	CloseHandle(CreateFile(b, GENERIC_ALL, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+		nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+	ShellExecute(hwnd, L"open", b, nullptr, nullptr, SW_SHOWNORMAL);
+	usedSaveNames[t-'a'] = true;
+	resetCharNames();
+}
+void Saves::readFromFile(char t){
+	char a[] = "D:/PandemicSaves/savex.txt"; a[21] = t;
+	FILE* f = fopen(a, "r"); int i,tt,u,v;
+	fscanf(f, "%d%d%d%d", &outbreakTrack, &infectRate, &totalPlayer, &nowPlayer);
+	for (i = 0; i < 4; i++)
+		fscanf(f, "%d%d", &colors[i].cureStatus, &colors[i].virusRemain);
+	fscanf(f, "%d", &tt); toUseHandCards.clear();
+	for (i = 0; i < tt; i++) {
+		fscanf(f, "%d", &u);
+		toUseHandCards.emplace_back(u>>6,u & 63);
+	}
+	fscanf(f, "%d", &tt); usedHandCards.clear();
+	for (i = 0; i < tt; i++) {
+		fscanf(f, "%d", &u);
+		usedHandCards.emplace_back(u >> 6, u & 63);
+	}
+	fscanf(f, "%d", &tt); toUseVirusCards.clear();
+	for (i = 0; i < tt; i++)
+		fscanf(f, "%d", &u), toUseVirusCards.emplace_back(u);
+	fscanf(f, "%d", &tt); usedVirusCards.clear();
+	for (i = 0; i < tt; i++)
+		fscanf(f, "%d", &u), usedVirusCards.emplace_back(u);
+	for (i = 1; i <= 48; i++) {
+		Saves* p = (Saves*)&cities[i];
+		/*tt = p->hasVirus[0]<<0 | p->hasVirus[1] << 1 | hasVirus[2] << 2 | p->colVirus[0] << 3 | p->colVirus[1] << 5 |
+			p->colVirus[2] << 7 | p->hasResearch << 9 | p->isPeopleHere[0] << 10 |
+			p->isPeopleHere[1] << 11 | p->isPeopleHere[2] << 12 | p->isPeopleHere[3] << 13;*/
+		fscanf(f, "%d", &tt);
+		p->hasVirus[0] = tt & 1; p->hasVirus[1] = tt & 2; p->hasVirus[2] = tt & 4;
+		p->colVirus[0] = tt >> 3 & 3; p->colVirus[1] = tt >> 5 & 3; p->colVirus[2] = tt >> 7 & 3;
+		p->hasResearch = tt & 512; p->isPeopleHere[0] = tt & 1024; p->isPeopleHere[1] = tt & 2048;
+		p->isPeopleHere[2] = tt & 4096; p->isPeopleHere[3] = tt & 8192;
+	}
+	for (i = 0; i < 4; i++) {
+		int x;
+		fscanf(f, "%d", &x); char tg = x + 'a';
+		switch (tg) {
+		case 'a':players[i] = new Actor(i);				break;
+		case 'd':players[i] = new Dispatcher(i);		break;
+		case 'm':players[i] = new Medic(i);				break;
+		case 'n':players[i] = new SkilllessPlayer(i);	break;
+		case 'r':players[i] = new Researcher(i);		break;
+		case 's':players[i] = new Scientist(i);			break;
+		}
+		fscanf(f, "%d%d", &players[i]->nowCity, &players[i]->remainMove);
+		for (int j = 0; j < 7; j++)
+			fscanf(f, "%d%d", &players[i]->handCards[j].cardType, &players[i]->handCards[j].nCityNum);
+	}
+	fclose(f);
+}
+void Saves::deleteSave(char t) {
+	wchar_t b[30]; wsprintf(b, L"D:/PandemicSaves/save%c.txt", t);
+	if (!DeleteFile(b)) {
+		FILE* f = _wfopen(b, L"w");
+		fclose(f);
+	}
+	wsprintf(b, L"D:/PandemicSaves/info%c.txt", t);
+	if (!DeleteFile(b)) {
+		FILE* f = _wfopen(b, L"w");
+		fclose(f);
+	}
+	usedSaveNames[t-'a'] = false;
+	resetCharNames();
+}
+void Saves::showSaveInfo(char t) {
+	char a[] = "D:/PandemicSaves/savex.txt"; a[21] = t; wchar_t m[1000], s[100]; const wchar_t* cs[] = { L"未治愈",L"已治愈",L"已根除" };
+	wsprintf(m, L"存档%c的详细信息：\n", t);
+	FILE* f = fopen(a, "r"); int i, tt, u, v, aa, bb, c, d,np;
+	fscanf(f, "%d%d%d%d", &aa, &bb, &c, &np); wsprintf(s, L"已爆发次数：%d，感染速率：%d，总玩家数：%d，当前玩家：玩家%d\n", aa, cardNumByRate[bb], c, np + 1);
+	wcscat(m, s);
+	for (i = 0; i < 4; i++) {
+		fscanf(f, "%d%d", &aa, &bb);
+		wsprintf(s, L"%s色病毒情况：治愈情况：%s，剩余病毒数：%d\n", colors[i].chineseName, cs[aa], bb); wcscat(m, s);
+	}
+	fscanf(f, "%d", &aa);
+	for (i = 0; i < aa; i++) {
+		fscanf(f, "%d", &u);
+	}
+	fscanf(f, "%d", &bb);
+	for (i = 0; i < bb; i++) {
+		fscanf(f, "%d", &u);
+	}
+	fscanf(f, "%d", &c);
+	for (i = 0; i < c; i++)
+		fscanf(f, "%d", &u);
+	fscanf(f, "%d", &d); 
+	for (i = 0; i < d; i++)
+		fscanf(f, "%d", &u);
+	wsprintf(s, L"用牌情况：未用手牌%d张，已用手牌%d张，未用病毒牌%d张，已用%d张\n", aa, bb, c, d); wcscat(m, s);
+	for (i = 1; i <= 48; i++) {
+		fscanf(f, "%d", &tt);
+	}
+	for (i = 0; i < 4; i++) {
+		int x;
+		fscanf(f, "%d", &x); char tg = x + 'a';
+		fscanf(f, "%d%d", &aa, &bb); tt = -1;
+		for (int j = 0; j < 7; j++)
+			fscanf(f, "%d%d", &c, &d), tt = c == -1 ? j : tt;
+		if (i != np)
+			wsprintf(s, L"玩家%d情况：\n类型：%s，所在城市：%s，手牌数量：%d张\n", i + 1, nameOfPlayer[tg], cities[aa].chineseName, tt + 1);
+		else
+			wsprintf(s, L"当前玩家%d情况：\n类型：%s，所在城市：%s，剩余行动：%d，手牌数量：%d张\n", i + 1, nameOfPlayer[tg], cities[aa].chineseName, tt + 1);
+		wcscat(m, s);
+	}
+	fclose(f);
+	//弄上附加信息
+	wsprintf(s, L"存档%c详细信息",t);
+	MessageBox(hwnd, m, s, 0);
 }
 #endif
