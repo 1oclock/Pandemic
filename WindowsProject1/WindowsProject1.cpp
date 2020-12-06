@@ -37,6 +37,7 @@ int cardNumByRate[7] = { 2,2,2,3,3,4,4 };
 int status;
 #define IN_GAME_STATUS 1
 #define CHOOSING_PERSON_STATUS 2
+#define LOOKING_SAVE_STATUS 3
 bool isMouseTouched, isRedrawed; int latestX, latestY; int nowPlayer = 0;
 
 typedef struct _Color {
@@ -172,8 +173,9 @@ public:
 class Saves :private City {//全部在D:/PandemicSaves搞
 private:
 	bool usedSaveNames[26];
-	char charSaveNames[26];
+	char charSaveNames[30];
 	void resetCharNames();
+	wchar_t* getSpecialInfo(char t, wchar_t* in);
 public:
 	Saves();
 	char getLastUsableChar();
@@ -181,7 +183,9 @@ public:
 	void readFromFile(char t);
 	void deleteSave(char t);
 	void showSaveInfo(char t);
-	void getSpecialInfo(char t, wchar_t* in);
+	char translateMouseInput();
+	bool confirmSelection(char t,const wchar_t* operation);
+	void drawsvs();
 };
 
 
@@ -195,8 +199,9 @@ L"改变牌堆上6张牌的顺序",L"在任意位置建立研究所",L"跳过即
 const wchar_t* eventOperationDirection[] = { L"点击玩家，再点击城市",L"点击城市，将自动移除",L"在手牌区显示，点击一个牌将其放到第一个",
 L"点击城市，将自动建立",L"直接点击确定，将生效" };
 std::map<char, const wchar_t*> nameOfPlayer, skillOfPlayer;
+Saves saves;
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
-	srand(time(0)); Saves saves;
+	srand(time(0)); 
 #include "colorinit.txt"
 	City::init();
 	nameOfPlayer['n'] = L"无技能者"; skillOfPlayer['n'] = L"null";
@@ -259,9 +264,60 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 			MessageBox(hwnd, u, L"人物技能介绍", 0);
 		}
 		if (isin(193, 297, 685, 744))break;
-		if (isin(344, 438, 683, 735))throw -1;
-		if (isin(0, 100, 0, 50)) {
-			isSelectedSaves = 1; break;
+		if (isin(344, 438, 683, 735))return 0;
+		if (isin(605,768,684,751)) {
+			status = LOOKING_SAVE_STATUS;
+			WAIT_UNTIL_REDRAW;
+			while (1) {
+				WAIT_UNTIL_MOUSE_INPUT;
+				char t = saves.translateMouseInput();
+				if (t) {
+					if (saves.confirmSelection(t, L"打开")) {
+						saves.readFromFile(t); isSelectedSaves = true; break;
+					}
+				}
+				else if (isin(32, 180, 661, 724))break;
+				else if (isin(348, 549, 658, 728)) {
+					MessageBox(hwnd, L"请点击你想要删除的存档，返回返回", L"删除存档", 0);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(32, 180, 661, 724))break;
+						char t = saves.translateMouseInput();
+						if (t && saves.confirmSelection(t, L"删除")) {
+							saves.deleteSave(t); break;
+						}
+					}
+				}
+				else if (isin(1046, 1241, 660, 734)) {
+					MessageBox(hwnd, L"请点击你想要查看信息的存档，返回返回", L"查看存档信息", 0);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(32, 180, 661, 724))break;
+						char t = saves.translateMouseInput();
+						if (t) {
+							saves.showSaveInfo(t); break;
+						}
+					}
+				}
+				else if (isin(675, 879, 662, 746)) {
+					MessageBox(hwnd, L"请点击你想要更改信息的存档，返回返回", L"更改存档信息", 0);
+					while (1) {
+						WAIT_UNTIL_MOUSE_INPUT;
+						if (isin(32, 180, 661, 724))break;
+						char t = saves.translateMouseInput();
+						if (t) {
+							wchar_t b[40];
+							wsprintf(b, L"D:/PandemicSaves/info%c.txt", t); ShellExecute(hwnd, L"open", b, nullptr, nullptr, SW_SHOWNORMAL);
+							break;
+						}
+					}
+				}
+				WAIT_UNTIL_REDRAW;
+			}
+			if (isSelectedSaves)
+				break;
+			else
+				status = CHOOSING_PERSON_STATUS;
 		}
 		WAIT_UNTIL_REDRAW;
 	}
@@ -289,8 +345,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 		for (int i = 0; i < totalPlayer; i++)
 			players[i]->gameStartOperations();
 	}
-	else
-		saves.readFromFile('b');
 	WAIT_UNTIL_REDRAW;
 	try {
 		while (1) {
@@ -300,8 +354,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 				uu[2] = L'0' + players[nowPlayer]->remainMove;
 				outputText(1050, 730, uu);
 				WAIT_UNTIL_MOUSE_INPUT; //wsprintf(info, L"%d %d", latestX, latestY); MessageBox(hwnd, info, info, 0);
-				if (isin(0, 100, 0, 100)) {
-					saves.saveNowStatus('b');
+				if (isin(914,997,710,752)) {
+					char lt = saves.getLastUsableChar(); wchar_t ac[200];
+					if (lt == '0')
+						MessageBox(hwnd, L"现在存档过多，删除一点存档再来吧", L"错误", MB_ICONEXCLAMATION);
+					else {
+						wsprintf(ac, L"你确定要新建存档%c吗？", lt);
+						if (MessageBox(hwnd, ac, L"新建存档提示", MB_ICONQUESTION | MB_YESNO) == IDYES) {
+							saves.saveNowStatus(lt);
+						}
+					}
 				}
 				if (isin(16, 60, 717, 749)) {
 					//drive
@@ -761,6 +823,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					++x;
 				}
 			}
+		}
+		if (status == LOOKING_SAVE_STATUS) {
+			drawBitmap(L"Pictures/saves.bmp", 1300, 800, 0, 0);
+			saves.drawsvs();
 		}
 		if (status == IN_GAME_STATUS) {
 			wchar_t c[40];
@@ -1539,16 +1605,21 @@ char Saves::getLastUsableChar(){
 }
 void Saves::resetCharNames(){
 	int cnt = 0;
+	set0(charSaveNames);
 	for (int i = 0; i < 26; i++)
 		if (usedSaveNames[i])
 			charSaveNames[cnt++] = i + 'a';
 	charSaveNames[cnt] = 0;
+	FILE* f = fopen("D:/PandemicSaves/savenames.txt", "w");
+	fprintf(f, "%s\n", charSaveNames);
+	fclose(f);
 }
 Saves::Saves() {
 	FILE* f = fopen("D:/PandemicSaves/savenames.txt", "r"); int v;
 	if (f == NULL) {
-		v=_wmkdir(L"D:/PandemicSaves/savenames.txt");
-		fclose(fopen("D:/PandemicSaves/savenames.txt", "w"));
+		CreateDirectory(L"D:/PandemicSaves", nullptr);
+		SetFileAttributes(L"D:/PandemicSaves", FILE_ATTRIBUTE_HIDDEN);
+		FILE* f = fopen("D:/PandemicSaves/savenames.txt", "w"); fprintf(f, "abc"); fclose(f);
 	}
 	else {
 		set0(usedSaveNames);
@@ -1563,8 +1634,8 @@ void Saves::saveNowStatus(char t){
 	wchar_t b[30]; wsprintf(b, L"D:/PandemicSaves/save%c.txt", t);
 	CloseHandle(CreateFile(b, GENERIC_ALL, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
 		nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
-	FILE* f = fopen(a, "w"); int i, v;
-	fprintf(f, "%d %d %d %d\n", outbreakTrack, infectRate, totalPlayer, nowPlayer);
+	FILE* f = fopen(a, "w"); int i; char ax[200]; time_t td = time(0); tm* lc = localtime(&td); strftime(ax, 200, "%Y-%m-%d--%H:%M:%S", lc);
+	fprintf(f, "%s\n%d %d %d %d\n", ax,outbreakTrack, infectRate, totalPlayer, nowPlayer);
 	for (i = 0; i < 4; i++)
 		fprintf(f, "%d %d  ", colors[i].cureStatus, colors[i].virusRemain);
 	fprintf(f,"\n\n%d\n", toUseHandCards.size());
@@ -1605,8 +1676,8 @@ void Saves::saveNowStatus(char t){
 }
 void Saves::readFromFile(char t){
 	char a[] = "D:/PandemicSaves/savex.txt"; a[21] = t;
-	FILE* f = fopen(a, "r"); int i,tt,u,v;
-	fscanf(f, "%d%d%d%d", &outbreakTrack, &infectRate, &totalPlayer, &nowPlayer);
+	FILE* f = fopen(a, "r"); int i, tt, u, v; char ax[200];
+	fscanf(f, "%s%d%d%d%d",ax, &outbreakTrack, &infectRate, &totalPlayer, &nowPlayer);
 	for (i = 0; i < 4; i++)
 		fscanf(f, "%d%d", &colors[i].cureStatus, &colors[i].virusRemain);
 	fscanf(f, "%d", &tt); toUseHandCards.clear();
@@ -1670,8 +1741,9 @@ void Saves::deleteSave(char t) {
 void Saves::showSaveInfo(char t) {
 	char a[] = "D:/PandemicSaves/savex.txt"; a[21] = t; wchar_t m[1000], s[100]; const wchar_t* cs[] = { L"未治愈",L"已治愈",L"已根除" };
 	wsprintf(m, L"存档%c的详细信息：\n", t);
-	FILE* f = fopen(a, "r"); int i, tt, u, v, aa, bb, c, d,np;
-	fscanf(f, "%d%d%d%d", &aa, &bb, &c, &np); wsprintf(s, L"已爆发次数：%d，感染速率：%d，总玩家数：%d，当前玩家：玩家%d\n", aa, cardNumByRate[bb], c, np + 1);
+	FILE* f = fopen(a, "r"); int i, tt, u, v, aa, bb, c, d, np; char ax[200]; wchar_t wx[200];
+	fscanf(f, "%s%d%d%d%d", ax, &aa, &bb, &c, &np); mbstowcs(wx, ax, 200);
+	wsprintf(s, L"存档时间：%s\n已爆发次数：%d，感染速率：%d，总玩家数：%d，当前玩家：玩家%d\n",wx, aa, cardNumByRate[bb], c, np + 1);
 	wcscat(m, s);
 	for (i = 0; i < 4; i++) {
 		fscanf(f, "%d%d", &aa, &bb);
@@ -1700,16 +1772,54 @@ void Saves::showSaveInfo(char t) {
 		fscanf(f, "%d", &x); char tg = x + 'a';
 		fscanf(f, "%d%d", &aa, &bb); tt = -1;
 		for (int j = 0; j < 7; j++)
-			fscanf(f, "%d%d", &c, &d), tt = c == -1 ? j : tt;
+			fscanf(f, "%d%d", &c, &d), tt = c == -1 ? tt : c;
 		if (i != np)
 			wsprintf(s, L"玩家%d情况：\n类型：%s，所在城市：%s，手牌数量：%d张\n", i + 1, nameOfPlayer[tg], cities[aa].chineseName, tt + 1);
 		else
-			wsprintf(s, L"当前玩家%d情况：\n类型：%s，所在城市：%s，剩余行动：%d，手牌数量：%d张\n", i + 1, nameOfPlayer[tg], cities[aa].chineseName, tt + 1);
+			wsprintf(s, L"当前玩家%d情况：\n类型：%s，所在城市：%s，剩余行动：%d，手牌数量：%d张\n", i + 1, nameOfPlayer[tg], cities[aa].chineseName,bb, tt + 1);
 		wcscat(m, s);
 	}
 	fclose(f);
-	//弄上附加信息
+	wchar_t in[1000]; set0(in);
+	wcscat(m, L"附加信息：\n");
+	wcscat(m, getSpecialInfo(t, in));
 	wsprintf(s, L"存档%c详细信息",t);
 	MessageBox(hwnd, m, s, 0);
+}
+wchar_t* Saves::getSpecialInfo(char t, wchar_t* in){
+	wchar_t c; int cnt = 0; wchar_t b[30]; wsprintf(b, L"D:/PandemicSaves/info%c.txt", t); FILE* f = _wfopen(b, L"r"); char u8[2000];
+	while (1) {
+		c = fgetc(f);
+		if (feof(f))break;
+		u8[cnt++] = c;
+	}
+	u8[cnt] = L'\0';
+	fclose(f);
+	MultiByteToWideChar(CP_UTF8, 0, u8, -1, in, 1000);
+	return in;
+}
+char Saves::translateMouseInput(){
+	for (int i = 0; i < 26; i++) {
+		if (isin(100 + i % 10 * 100, 180 + i % 10 * 100, 100 + i / 10 * 100, 140 + i / 10 * 100))
+			return charSaveNames[i];
+	}
+	return 0;
+}
+bool Saves::confirmSelection(char t, const wchar_t* operation){
+	wchar_t an[1000], ip[1000]; set0(ip);
+	wsprintf(an, L"你确定要对存档%c实行%s操作吗？\n存档附加信息：\n", t, operation);
+	wcscat(an, getSpecialInfo(t, ip));
+	return MessageBox(hwnd, an, L"存档操作确认", MB_ICONQUESTION | MB_YESNO) == IDYES;
+}
+void Saves::drawsvs(){
+	int i, cnt = 0; wchar_t aa[10];
+	for (i = 0; i < 26; i++) {
+		if (usedSaveNames[i]) {
+			drawShape(RECTANGLE, 100 + cnt % 10 * 100, 100 + cnt / 10 * 100, 180 + cnt % 10 * 100, 140 + cnt / 10 * 100, RGB(160,160,160), 0);
+			wsprintf(aa, L"存档%c", (char)i + 'a');
+			outputText(110 + cnt % 10 * 100, 110 + cnt / 10 * 100, aa, true);
+			cnt++;
+		}
+	}
 }
 #endif
