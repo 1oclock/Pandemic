@@ -1619,13 +1619,14 @@ Saves::Saves() {
 	if (f == NULL) {
 		CreateDirectory(L"D:/PandemicSaves", nullptr);
 		SetFileAttributes(L"D:/PandemicSaves", FILE_ATTRIBUTE_HIDDEN);
-		FILE* f = fopen("D:/PandemicSaves/savenames.txt", "w"); fprintf(f, "abc"); fclose(f);
+		FILE* f = fopen("D:/PandemicSaves/savenames.txt", "w"); fprintf(f, "\n"); fclose(f);
 	}
 	else {
 		set0(usedSaveNames);
 		v=fscanf(f, "%s", charSaveNames);
 		int t = strlen(charSaveNames);
 		for (int i = 0; i < t; i++)usedSaveNames[charSaveNames[i] - 'a'] = true;
+		fclose(f);
 	}
 }
 #define fscanf v=fscanf
