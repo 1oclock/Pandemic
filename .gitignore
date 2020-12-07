@@ -18,7 +18,6 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-x64/
 x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
@@ -338,5 +337,5 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
-/WindowsProject1/Pictures
-/WindowsProject1/a.txt
+
+info.txt
