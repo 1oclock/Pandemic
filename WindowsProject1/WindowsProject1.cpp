@@ -2,12 +2,14 @@
 #define MAIN_INCLUDED
 #define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
+#include <mmsystem.h>
 #include <stdio.h>
 #include <time.h>
 #include <algorithm>
 #include <string.h>
 #include <vector>
 #include <map>
+#pragma comment(lib,"WINMM.LIB")
 
 #define set0(x) memset(x,0,sizeof(x))
 #define isin(xl,xr,yu,yd) (latestX>=(xl)&&latestX<=(xr)&&latestY>=(yu)&&latestY<=(yd))
@@ -118,7 +120,7 @@ public:
 	Player(int n);
 	HandCard handCards[7];
 	int remainMove;
-	void drive(int c);//correctnesses of all the functions here is protected by outside. These are all noexcept.
+	void drive(int c,int soundType);//correctnesses of all the functions here is protected by outside. These are all noexcept.
 	void directFlight(HandCard h);//go to h directed
 	void charterFlight(HandCard h, int to);
 	void shuttleFlight(int cWithResearch);
@@ -376,7 +378,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 							if (cities[i].isClickNear(latestX, latestY)) {
 								if (cities[i].isNeighbor(cities[players[nowPlayer]->nowCity])) {
 									if (cities[i].confirmSelection(L"坐车"))
-										players[nowPlayer]->drive(i), flag = true;
+										players[nowPlayer]->drive(i,1), flag = true;
 									else
 										flag = false;
 								}
@@ -748,13 +750,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	}
 	catch (int e) {
 		if (e == 1)
-			MessageBox(hwnd, L"你发现了所有的病毒的解药！", L"你赢了！", 0);
-		if (e == 2)
-			MessageBox(hwnd, L"爆发次数过多", L"你输了", 0);
-		if (e == 3)
-			MessageBox(hwnd, L"没有可以摸的手牌了", L"你输了", 0);
-		if (e == 4)
-			MessageBox(hwnd, L"病毒没有了", L"你输了", 0);
+			MessageBox(hwnd, L"你发现了所有的病毒的解药！", L"你赢了！", 0),PlaySound(L"Sound/victory.wav",0,SND_ASYNC|SND_FILENAME);
+		else if (e > 0) {
+			PlaySound(L"Sound/failure.wav", 0, SND_ASYNC | SND_FILENAME);
+			if (e == 2)
+				MessageBox(hwnd, L"爆发次数过多", L"你输了", 0);
+			if (e == 3)
+				MessageBox(hwnd, L"没有可以摸的手牌了", L"你输了", 0);
+			if (e == 4)
+				MessageBox(hwnd, L"病毒没有了", L"你输了", 0);
+			
+		}
 	}
 	return 0;
 }
@@ -1182,6 +1188,7 @@ void Player::buildResearch(HandCard h) {
 	numOfResearch++;
 	discardCard(h, 1);
 	remainMove--;
+	PlaySound(L"Sound/build.wav", 0, SND_ASYNC | SND_FILENAME);
 }
 void Actor::buildResearch(HandCard h) {
 	/*FILE *f = fopen("a.txt", "a");
@@ -1190,8 +1197,9 @@ void Actor::buildResearch(HandCard h) {
 	cities[nowCity].hasResearch = true;
 	numOfResearch++;
 	remainMove--;
+	PlaySound(L"Sound/build.wav", 0, SND_ASYNC | SND_FILENAME);
 }
-void Player::drive(int c) {
+void Player::drive(int c,int soundType) {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("player::drive", f);
 	fclose(f);*/
@@ -1199,26 +1207,30 @@ void Player::drive(int c) {
 	nowCity = c;
 	cities[nowCity].isPeopleHere[num] = true;
 	remainMove--;
+	if (soundType == 1)
+		PlaySound(L"Sound/drive.wav", nullptr, SND_FILENAME | SND_ASYNC);
+	else if (soundType == 2)
+		PlaySound(L"Sound/plane.wav", nullptr, SND_FILENAME | SND_ASYNC);
 }
 void Player::directFlight(HandCard h) {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("player::directto", f);
 	fclose(f);*/
-	drive(h.nCityNum);
+	drive(h.nCityNum,2);
 	discardCard(h, 1);
 }
 void Player::charterFlight(HandCard h, int to) {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("player::charterto", f);
 	fclose(f);*/
-	drive(to);
+	drive(to,2);
 	discardCard(h, 1);
 }
 void Player::shuttleFlight(int cWithResearch) {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("player::shuttleto", f);
 	fclose(f);*/
-	drive(cWithResearch);
+	drive(cWithResearch,2);
 }
 bool Player::treatDisease() {
 	/*FILE *f = fopen("a.txt", "a");
@@ -1227,6 +1239,8 @@ bool Player::treatDisease() {
 	bool ret;
 	remainMove -= ret = cities[nowCity].subVirus();
 	checkRemove();
+	if(ret)
+		PlaySound(L"Sound/Chess.wav", nullptr, SND_FILENAME | SND_ASYNC);
 	return ret;
 }
 bool Medic::treatDisease() {
@@ -1236,6 +1250,8 @@ bool Medic::treatDisease() {
 	bool t = cities[nowCity].subVirus() | cities[nowCity].subVirus() | cities[nowCity].subVirus();
 	if (colors[cities[nowCity].color].cureStatus == 0)
 		remainMove -= t;
+	if(t)
+		PlaySound(L"Sound/Chess.wav", nullptr, SND_FILENAME | SND_ASYNC);
 	checkRemove();
 	return t;
 }
@@ -1243,11 +1259,13 @@ void Player::addCard(HandCard h) {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("player::addcard", f);
 	fclose(f);*/
+	PlaySound(L"Sound/paper.wav", 0, SND_FILENAME | SND_ASYNC);
 	if (h.cardType == 0)
 		MessageBox(hwnd, cities[h.nCityNum].chineseName, L"摸到了：", 0);
 	if (h.cardType == 1)
 		MessageBox(hwnd, eventC[h.nCityNum], L"摸到了", 0);
 	if (handCards[6].cardType != -1) {
+		if (num != nowPlayer)drawCards();
 		MessageBox(hwnd, L"你的牌多于7张了，需要弃去\n点击有牌的地方弃牌，没牌的地方不摸牌", L"牌数过多", 0);
 		MSG msg;
 		WAIT_UNTIL_MOUSE_INPUT;
@@ -1340,11 +1358,12 @@ bool Player::discoverCure(HandCard* h) {
 	colors[co].cureStatus = 1;
 	checkRemove();
 	remainMove--;
+	PlaySound(L"Sound/Chess.wav", nullptr, SND_FILENAME | SND_ASYNC);
 	return true;
 }
 void Player::specialEvent(HandCard h, int type, Player* plr, int cty) {
 	if (type == 0) {
-		plr->drive(cty);
+		plr->drive(cty,2);
 		plr->remainMove++;
 	}
 	discardCard(h, 1);
@@ -1357,6 +1376,7 @@ void Player::specialEvent(HandCard h, int type, int cty) {
 			usedVirusCards.erase(t);
 			wsprintf(u, L"%s病毒牌清除成功", cities[cty].chineseName);
 			MessageBox(hwnd, u, L"人口快速恢复特别事件牌", 0);
+			PlaySound(L"Sound/paper.wav", nullptr, SND_ASYNC | SND_FILENAME);
 		}
 		else {
 			wsprintf(u, L"%s病毒牌清除失败：没有这张牌", cities[cty].chineseName);
@@ -1368,9 +1388,11 @@ void Player::specialEvent(HandCard h, int type, int cty) {
 		numOfResearch--;
 		wsprintfW(u, L"在%s建研究所成功", cities[cty].chineseName);
 		MessageBox(hwnd, u, L"政府拨款特别事件牌", 0);
+		PlaySound(L"Sound/build.wav", 0, SND_ASYNC | SND_FILENAME);
 	}
 	else if (type == 4) {
 		MessageBox(hwnd, L"成功使用：下次病毒传播将不会发生", L"寂静的一夜特别事件牌", 0);
+		PlaySound(L"Sound/chess.wav", nullptr, SND_ASYNC | SND_FILENAME);
 	}
 	discardCard(h, 1);
 }
@@ -1383,25 +1405,23 @@ void Player::specialEvent(HandCard h, int type, HandCard* rearranged) {
 	discardCard(h, 1);
 }
 void Player::gameStartOperations() {
-	wchar_t uu[200]; VirusCard v; HandCard h;
+	wchar_t uu[200], vv[200]; VirusCard v; HandCard h; set0(uu);
 	if (num == 0) {
 		for (int j = 1; j < 4; j++) {
-			wsprintf(uu, L"将要放%d个病毒的地方:\n", j);
+			wsprintf(vv, L"\n将要放%d个病毒的地方:\n", j); wcscat(uu, vv);
 			for (int i = 0; i < 3; i++) {
 				v = toUseVirusCards.back(); toUseVirusCards.pop_back(); usedVirusCards.push_back(v);
 				for (int k = 0; k < j; k++)
 					cities[v.nCitynum].addVirus();
 				wcscat(uu, cities[v.nCitynum].chineseName); wcscat(uu, L" ");
 			}
-			MessageBox(hwnd, uu, L"初始操作", 0);
 		}
+		MessageBox(hwnd, uu, L"初始操作", 0);
 	}
 	for (int i = 0; i < 6 - totalPlayer; i++) {
 		h = toUseHandCards.back(); toUseHandCards.pop_back();
 		this->handCards[i] = h;
 	}
-	wsprintf(uu, L"玩家%d完成了初始摸牌", num+1);
-	MessageBox(hwnd, uu, L"初始操作", 0);
 }
 void epidemic() {
 	FILE* f = fopen("a.txt", "a");
@@ -1546,10 +1566,11 @@ void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 }
 void Dispatcher::skill(Player* opee, int cityto) {
 	bool suc = false, hasto = false, hasfrom = false, czto; int toc, fromc;
-	if (cities[cityto].isNeighbor(cities[opee->nowCity]) ||
-		(cities[cityto].hasResearch && cities[opee->nowCity].hasResearch) ||
+	if ((cities[cityto].hasResearch && cities[opee->nowCity].hasResearch) ||
 		(cities[cityto].isPeopleHere[0] || cities[cityto].isPeopleHere[1] || cities[cityto].isPeopleHere[2] || cities[cityto].isPeopleHere[3]))
-		opee->drive(cityto), suc = true;
+		opee->drive(cityto,2), suc = true;
+	if (cities[cityto].isNeighbor(cities[opee->nowCity]))
+		opee->drive(cityto, 1), suc = true;
 	else {
 		for (int i = 0; i < 6; i++)
 			if (this->handCards[i].cardType == 0) {
@@ -1563,9 +1584,9 @@ void Dispatcher::skill(Player* opee, int cityto) {
 			if (!hasto && hasfrom)czto = false;
 			if (hasto && hasfrom)czto = MessageBox(hwnd, L"请选择扔掉目的地牌还是当前所在地牌\n目的地按是，所在地按否", L"调度员技能", MB_YESNO | MB_ICONQUESTION) == IDYES;
 			if (czto)
-				opee->drive(cityto), suc = true, discardCard(this->handCards[toc], 1);
+				opee->drive(cityto,2), suc = true, discardCard(this->handCards[toc], 1);
 			else
-				opee->drive(cityto), suc = true, discardCard(this->handCards[fromc], 1);
+				opee->drive(cityto,2), suc = true, discardCard(this->handCards[fromc], 1);
 		}
 		else
 			suc = false;
@@ -1591,7 +1612,7 @@ void checkRemove() {
 				if (cities[i].hasVirus[j] && cities[i].colVirus[j] == col)
 					flag = false;
 		if (flag)
-			colors[col].cureStatus = 2;
+			colors[col].cureStatus = 2, PlaySound(L"chess.wav", 0, SND_ASYNC | SND_FILENAME);
 	}
 	if (flag1)
 		throw 1;
