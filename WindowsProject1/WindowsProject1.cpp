@@ -86,6 +86,7 @@ private:
 	mutable int nowin;
 	const int num;
 	int getNextCity(int nowCity)const;//iterate all the city neighboring,return its num,start from self
+	int outbreak(int col);//>3 outbreak
 public:
 	City();
 	const wchar_t* englishName;
@@ -93,7 +94,6 @@ public:
 	bool hasResearch;
 	int color;
 	bool isPeopleHere[4];
-	int outbreak(int col);//>3 outbreak
 	void redraw();
 	bool isNeighbor(const City& c)const;
 	friend void checkRemove();//check if virus of color color doesn't exist in the city
@@ -750,9 +750,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 	}
 	catch (int e) {
 		if (e == 1)
-			MessageBox(hwnd, L"你发现了所有的病毒的解药！", L"你赢了！", 0),PlaySound(L"Sound/victory.wav",0,SND_ASYNC|SND_FILENAME);
+			MessageBox(hwnd, L"你发现了所有的病毒的解药！", L"你赢了！", 0), PlaySound(L"Sound/victory.wav", 0, SND_FILENAME);;
 		else if (e > 0) {
-			PlaySound(L"Sound/failure.wav", 0, SND_ASYNC | SND_FILENAME);
+			PlaySound(L"Sound/failure.wav", 0, SND_FILENAME);
 			if (e == 2)
 				MessageBox(hwnd, L"爆发次数过多", L"你输了", 0);
 			if (e == 3)
@@ -1076,6 +1076,7 @@ int City::outbreak(int col) {
 	if (hasOutbreak)return 0;
 	hasOutbreak = true;
 	MessageBox(hwnd, chineseName, L"oops:将要爆发的位置：", 0);
+	PlaySound(L"Sound/blast.wav", 0, SND_ASYNC | SND_FILENAME);
 	int t = this->num;
 	while (t = getNextCity(t)) {
 		cities[t].addVirus(col);
@@ -1247,7 +1248,7 @@ bool Medic::treatDisease() {
 	/*FILE *f = fopen("a.txt", "a");
 	fputs("medic::treat", f);
 	fclose(f);*/
-	bool t = cities[nowCity].subVirus() | cities[nowCity].subVirus() | cities[nowCity].subVirus();
+	bool t = cities[nowCity].subVirus() || cities[nowCity].subVirus() || cities[nowCity].subVirus();
 	if (colors[cities[nowCity].color].cureStatus == 0)
 		remainMove -= t;
 	if(t)
@@ -1424,11 +1425,9 @@ void Player::gameStartOperations() {
 	}
 }
 void epidemic() {
-	FILE* f = fopen("a.txt", "a");
-	fputs("player::epidemic\nat:", f);
 	infectRate++;
 	MessageBox(hwnd, cities[toUseVirusCards[0].nCitynum].chineseName, L"要增加三个病毒的位置：", 0);
-	fwprintf(f, L"%s \n", cities[toUseVirusCards[0].nCitynum].chineseName);
+	PlaySound(L"Sound/blast.wav", 0, SND_ASYNC | SND_FILENAME);
 	for (int i = 0; i < 3; i++)City::clearOutbreakStatus(), cities[toUseVirusCards[0].nCitynum].addVirus();
 	usedVirusCards.push_back(toUseVirusCards[0]);
 	toUseVirusCards.erase(toUseVirusCards.begin());
@@ -1437,12 +1436,6 @@ void epidemic() {
 		toUseVirusCards.push_back(usedVirusCards.back());
 		usedVirusCards.pop_back();
 	}
-	for (auto i : toUseVirusCards)
-		fwprintf(f, L"%s ", cities[i.nCitynum].englishName);
-	fprintf(f, "\nused:");
-	for (auto i : usedVirusCards)
-		fwprintf(f, L"%s ", cities[i.nCitynum].englishName);
-	fclose(f);
 }
 void executeSpecialEvent(HandCard u, Player* p, bool& flag2) {
 	MSG msg; int i = 0, toplr = -1, tocty = 0; bool flag = false;
